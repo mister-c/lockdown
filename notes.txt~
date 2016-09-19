@@ -1,0 +1,79 @@
+Ok... heres what I want to do in this version
+
+Theres a few different things we have to deal with here
+
+FIRST
+We need a way of keeping track of the sprites position (fucking duh)
+
+NEXT
+We need a way of keeping track of the sprites PREVIOUS position. Since we dont redraw the board every frame we need to redraw the last space the player was standing in to prevent framedrag
+
+LAST
+We need a way of storing the players future position so when you use keyboard input to request the player to move to a new square, the square is tested BEFORE you move to it
+
+This could be handled with an array of 3 2-ples. The big question is... will this slow down the game, since we're updating to many different entries in the array
+That Super Mario World videos got me thinking... maybe we should just arbitrarily limit the number of sprites shown on screen at the same time
+
+We COULD... purley for the lulz.... make the array much bigger and show a fading trail of all the previous spaces the player was standing in. This would look cool and maybe people would want to be your friend if you got this effect to work....
+
+----
+
+What happens if we define behaviors on ALL of the array elements (we should)
+>>We only execute behaviors on element 1 of the array
+
+----
+
+Element 0 should be a carbon copy of element 1
+
+If a move is accepted...
+element 2 dies
+element 1 becomes 2
+element 0 becomes element 1
+element 0 stays as is
+Do a check to make sure element 1 and element 0 are the same
+
+
+If a move is denied
+Element 0 reverts to being a carbon copy of element 1
+
+This way if a move is accepted...
+we have a history of the previous location
+the players position is updated
+The future-move-buffer still mirrors the present location so we can modify it using the execute function
+
+This way if a move i denied...
+We can use
+
+WE ONLY NEED A BUFFER OF TWO 2 !//1ONE!! 2 TWO
+
+Store the current position and the previous position and rollback if a move is found to be invalid...
+
+----------
+
+Hi gatcha...
+Its future-gatcha
+What the flying fuck were you smoking back then?
+Probably something pretty awesome, because you've gotten further in the development of this game than you have
+in the development of any of your own custom engines.
+
+Except maybe the dreambubble engine...
+But the dreambubble engine never had a map storing procedurally generated rooms. Also dreambubble never had working collision
+detection and this has collision detection.
+
+So you're doing pretty great.
+
+----------
+
+For some reason... I remeber it being REALLY super duper important that we not keep track of position changes with just an array...
+that we need to have a two full copies of each entity and perform the updates on those.
+
+But I don't really think this is needed....
+
+Having just an array of two items that show the past and present position would work fucking fine.
+
+God dammit. What the hell is wrong with me?
+
+----------
+
+The last thing for this build is to fix the fractional position update collision bug.
+You're for sure overthinking like you overthink everything....

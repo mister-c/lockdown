@@ -1,0 +1,20 @@
+What we're doing in this version
+
+Fix diagnol movement so that it doesn't jitter
+This is caused by the up and left movements happening asychronously
+
+-------------
+
+Fixed the diagnol hop problem
+Still not fully clear WHY this was happening... but it was related to the delta needed
+for triggering a cell movement being higher than 1
+
+This means that if you walked left and had a leftwards buffer between 0 and 2, that buffer did not get wiped out.
+If you started moving upward and triggered cell movement, both upwards and leftwards movement would occur
+This is because you still have a left over leftwards buffer
+
+-------------
+We want to add room transitions in this version...
+
+coz why not?!?!??
+
