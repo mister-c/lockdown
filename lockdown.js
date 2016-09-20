@@ -824,8 +824,8 @@ var fillMapSquare = function(y, x){
 // 	    }
 // 	}
 //     }
-    return filled;
-}
+//     return filled;
+// }
 
 //asciidisplay stuff
 //////////////////////////////////////////////////
