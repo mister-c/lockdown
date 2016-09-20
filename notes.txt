@@ -18,3 +18,11 @@ We want to add room transitions in this version...
 
 coz why not?!?!??
 
+-------------
+
+Create the 3 Controllers...
+
+Controller
+GridController
+MapController
+

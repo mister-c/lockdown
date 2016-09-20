@@ -73,6 +73,431 @@ class Entity {
 
 }
 
+function SuperController(){
+    var instance;
+
+    SuperController = function(){
+	return instance;
+    }
+
+    SuperController.prototype = this;
+
+    instance = new SuperController();
+
+    instance.constructor = SuperController;
+
+    instance.gc = new GridController();
+
+    // Controller calls the loop for GridController
+    // so we can stop events from occuring on the grid at
+    // will....
+    instance.loop = function(lastFrameTime, entTable){
+	var time;
+	
+	instance.gc.loop(lastFrameTime, entTable);
+
+	requestAnimFrame(function(){
+	    instance.loop(time, entTable);
+	});
+    }
+
+    instance.gcInit = function(){
+	var entTable;
+	
+	entTable = instance.gc.init();
+	instance.loop(new Date().getTime(), entTable);
+	// instance.loop
+    }
+
+    return instance;
+}
+
+function GridController(){
+    var instance;
+
+    // Singleton stuff
+    GridController = function(){
+	return instance;
+    }
+    
+    GridController.prototype = this;
+
+    instance = new GridController();
+
+    instance.constructor = GridController;
+
+    instance.loop = function(lastFrameTime, entTable){
+	var time;
+
+	//Update timer
+	// time = (new Date()).getTime();
+	//console.log(Math.floor(Math.pow((time - lastFrameTime), -1) * 1000));
+
+	//Update game state
+	instance.update((time - lastFrameTime), entTable);
+	
+	//TODO write this method and call it here....
+	//Update room if needed
+	
+	//Get the next frame
+	// requestAnimFrame(function(){
+	//     instance.loop(time, entTable);
+	// });
+    }
+
+    instance.update = function(time, entTable){
+	instance.executeBehavior(entTable);
+
+	//drawBkg(entTable);
+	updateEnt(entTable);
+	instance.grid_delta_update_draw_hyper_drive_activate();
+	//drawGridBuffer();
+	//drawDisplay();
+	
+	//if(b){
+	//	drawChar(0, 0, "X", "#ff0000");
+	//}else{
+	//	drawChar(0, 0, "X");
+	//}
+    }
+
+    //This is where the game starts bitch
+    instance.init = function(){
+	var coral_size;
+	
+	var mapPosTable;
+	var gridPosTable;
+
+	//Contains all our entity objects...
+	var entTable;
+
+	//var jstick;
+	jstick = new Joystick();
+
+	//context stuff
+	// context.fillStyle = bColor;
+	// context.fillStyle = fColor;
+	context.textAlign = "center";
+	context.font = FONT + "px sans-serif";
+
+	//Init map stuff
+	coral_size = 0;
+	while(coral_size < 200){
+	    initMap();
+	    console.log("Coraling...");
+	    coral_size = instance.coral(-1, -1);
+	    console.log("coral size..." + coral_size);
+	    //Keep doing this until the map is our requisite
+	    //size....
+	}
+	//Initalize position tables
+	mapPosTable  = {};
+	gridPosTable = {};
+	
+	entTable     = {};
+
+	entTable["Fay"] = [];
+	for(var i=0; i<2; i++){
+	    entTable["Fay"][i] = {};
+	    entTable["Fay"][i] = new Entity("Fay");
+	    entTable["Fay"][i].defineBehavior([walkBehavior]);
+	}
+	//entTable["Fay"][0] = new Entity("Fay");
+	//entTable["Fay"][0].defineBehavior([walkBehavior]);
+	//entTable["Fay"][0].defineBehavior([runBehavior]);
+
+	console.log("Fay was placed at map location..." + 
+		    entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
+	
+
+	//Init asciidisplay stuff
+	initCanvas();
+	asciidisplay  = init2dArray(NUM_ROW, NUM_COLUMN, "" );
+	displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
+
+	//Get set up in the inital room
+	instance.switchRoom(entTable);
+
+	//Update the grid buffer and whatever
+	//drawGridBuffer();
+	//drawDisplay();
+
+	//Add listeners for the keyboard
+	document.addEventListener('keydown', function(event){
+	    if(event.keyCode == 87){
+		jstick.up    = true;
+	    }else if(event.keyCode == 83){
+		jstick.down  = true;
+	    }else if(event.keyCode == 65){
+		jstick.left  = true;
+	    }else if(event.keyCode == 68){
+		jstick.right = true;
+	    }
+	});
+	document.addEventListener('keyup', function(event){
+	    if(event.keyCode == 87){
+		jstick.up    = false;
+	    }else if(event.keyCode == 83){
+		jstick.down  = false;
+	    }else if(event.keyCode == 65){
+		jstick.left  = false;
+	    }else if(event.keyCode == 68){
+		jstick.right = false;
+	    }
+	});
+	return entTable;
+	// //Start the game loop
+	// instance.loop(new Date().getTime(), entTable);
+    }
+
+    //TO DO
+    //Make sure this method works for entities that are not Fay
+    instance.switchRoom = function(entTable){
+	var tempArr;
+
+	console.log("Called switchRoom()");
+	if((entTable["Fay"][0].mapY == -1 && entTable["Fay"][0].mapX == -1) ||
+	   (entTable["Fay"][1].mapY == -1 && entTable["Fay"][1].mapX == -1)){
+	    instance.switchRandomRoom(entTable);
+	} else {
+	    instance.switchAdjRoom(entTable);
+	}
+
+	//Draw the background
+	displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
+	drawBkg(entTable);
+	entTable["Fay"][1].isMoving = true;
+
+	// console.log(Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()));
+	// console.log(Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()));
+	
+	// console.log("truth status of the update ent loop: " + (entTable["Fay"][1].isMoving == true &&
+	// 	   (Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()) > 0 ||
+	// 	    Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()) > 0)));
+	
+	// entTable["Fay"][0].mapY = entTable["Fay"][1].mapY;
+	// entTable["Fay"][0].mapX = entTable["Fay"][1].mapX;
+    }
+
+    instance.switchAdjRoom = function(entTable){
+	console.log("Switching to an adjacent room");
+
+	if(entTable["Fay"][0].gridX > NUM_COLUMN){
+	    //Exit east
+	    entTable["Fay"][1].gridX = 0;
+	    entTable["Fay"][1].mapX++;
+	}else if (entTable["Fay"][0].gridX < 0){
+	    //Exit west
+	    entTable["Fay"][1].gridX = NUM_COLUMN;
+	    entTable["Fay"][1].mapX--;
+	}else if (entTable["Fay"][0].gridY > NUM_ROW){
+	    //Exit south
+	    entTable["Fay"][1].gridY = 0;
+	    entTable["Fay"][1].mapY++;
+	}else if (entTable["Fay"][0].gridY < 0){
+	    //Exit north
+	    entTable["Fay"][1].gridY = NUM_ROW;
+	    entTable["Fay"][1].mapY--;
+	}
+
+	console.log("Moving from " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX +
+		    "... to " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
+    }
+
+    instance.switchRandomRoom = function(entTable){
+	//Pick a random spot on the game map
+	tempArr = mapRandArray[Math.floor(Math.random(mapRandArray.length))];
+	//mapPosTable["Fay"] = tempArr;
+
+	entTable["Fay"][0].mapY = tempArr[0];
+	entTable["Fay"][0].mapX = tempArr[1];
+	entTable["Fay"][1].mapY = tempArr[0];
+	entTable["Fay"][1].mapX = tempArr[1];
+	
+	//Pick the center spot on the game grid
+	tempArr = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)];
+	//gridPosTable["Fay"] = tempArr;
+
+	// entTable["Fay"][0].gridY = tempArr[0];
+	// entTable["Fay"][0].gridX = tempArr[1];
+	entTable["Fay"][1].gridY = tempArr[0];
+	entTable["Fay"][1].gridX = tempArr[1];
+
+	console.log("Fay moved to " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
+    }
+
+    instance.executeBehavior = function(entTable){
+	//TODO refactor this to account for arrays...
+	for (var key in entTable){
+	    //I think element [1] is supposed to be the
+	    //present element...
+	    if(entTable[key][0].behavior){
+		entTable[key][0].behavior[0].execute(entTable[key][1]);
+	    }
+	}
+    }
+
+    instance.drawChar = function(charY, charX, character, fColor = "#ffffff", bColor = "#000000"){
+	var origContext;
+	
+	//origContext = context;
+	
+	context.textAlign = "center";
+	context.font = FONT + "px sans-serif";
+
+	context.fillStyle = bColor;
+	
+	//Draw the BKG
+	context.fillRect((charX * GRID_X_SPACING) + GRID_X_BUFFER,
+			 (charY * GRID_Y_SPACING) + GRID_X_BUFFER,
+			 GRID_X_SPACING - 1,
+			 GRID_Y_SPACING - 1);
+
+	context.fillStyle = fColor;
+
+	//Draw the CHAR
+	context.fillText(character, 
+			 (FONT_X_SPACING * charX) + FONT_X_BUFFER, 
+			 (FONT_Y_SPACING * charY) + FONT_Y_BUFFER);
+
+	//context = origContext;
+    }
+
+    instance.grid_delta_update_draw_hyper_drive_activate = function(){
+	for(var y = 0; y < NUM_ROW; y++){
+	    for(var x = 0; x < NUM_COLUMN; x++){
+		if(asciidisplay[y][x] != displayBuffer[y][x]){
+		    asciidisplay[y][x] = displayBuffer[y][x];
+		    sc.gc.drawChar(y, x, asciidisplay[y][x]);
+		}
+	    }
+	}
+    }
+
+    instance.drawGridBuffer = function(){
+	for(var y = 0; y < NUM_ROW; y++){
+	    for(var x = 0; x < NUM_COLUMN; x++){
+		asciidisplay[y][x] = displayBuffer[y][x];
+	    }
+	}
+    }
+
+    instance.drawDisplay = function(){
+	for(var y = 0; y < NUM_ROW; y++){
+	    for(var x = 0; x < NUM_COLUMN; x++){
+		sc.gc.drawChar(y, x, asciidisplay[y][x]);
+	    }
+	}
+    }
+
+    instance.coral_split = function(y, x){
+	var filled;
+
+	filled = 0;
+	
+	//Randomly decide if we will split
+	if(Math.random() < SPLIT_PROB){
+	    for(var i = 0; i < Math.floor(Math.random() * 4) + 1; i++){
+		filled = instance.coral(y, x) + filled;
+	    }
+	}
+	//Return the number of filled squares
+	return filled;
+    }
+
+    instance.coral = function(y,x){
+	var r;
+	var filled;
+
+	//Pick a seed square
+	if(x == -1 && y == -1){
+	    console.log("creating seed");
+	    x = Math.floor(Math.random() * NUM_MAP_COLUMN);
+	    y = Math.floor(Math.random() * NUM_MAP_ROW);
+	    console.log(y + ", " + x);
+	    //Fill the seed square
+	    mapBuffer[y][x] = "#";
+	}
+
+	checked = 0;
+	filled  = 0;
+	
+	while(checked < 4){
+	    //UP    - 0
+	    //DOWN  - 1
+	    //LEFT  - 2
+	    //RIGHT - 3
+	    r = Math.floor(Math.random() * 4);
+	    switch(r){
+	    case 0:
+		if(fillMapSquare(y-1, x)){
+		    checked += 4;
+		    filled++;
+		    filled = instance.coral(y-1, x) + filled;
+		    
+		    //Split the coral
+		    filled = instance.coral_split(y, x) + filled;
+
+		    return filled;
+		    break;
+		}else{
+		    r = (r + 1) % 4;
+		    checked++;
+		}
+	    case 1:
+		if(fillMapSquare(y+1, x)){
+		    checked += 4;
+		    filled++;
+		    filled = instance.coral(y+1, x) + filled;
+		    
+		    //Split the coral
+		    filled = instance.coral_split(y, x) + filled;
+		    
+		    return filled;
+		    break;
+		}else{
+		    r = (r + 1) % 4;
+		    checked++;
+		}
+	    case 2:
+		if(fillMapSquare(y, x-1)){
+		    checked += 4;
+		    filled++;
+		    filled = instance.coral(y, x-1) + filled;
+
+		    //Split the coral
+		    filled = instance.coral_split(y, x) + filled;
+		    
+		    return filled;
+		    break;
+		}else{
+		    r = (r + 1) % 4;
+		    checked++;
+		}
+	    case 3:
+		if(fillMapSquare(y, x+1)){
+		    checked += 4;
+		    filled++;
+		    filled = instance.coral(y, x+1) + filled;
+		    
+		    //Split the coral
+		    filled = instance.coral_split(y, x) + filled;
+		    
+		    return filled;
+		    break;
+		}else{
+		    r = (r + 1) % 4;
+		    checked++;
+		}
+	    }
+	}
+	return filled;
+    }
+
+    
+    return instance;
+}
+
 //Behaviors
 //////////////////////////////////////////////////
 
@@ -265,7 +690,7 @@ var updateEnt = function(entTable){
 
 	    //Room switch
 	    if(!(isInBound[1])){
-		switchRoom(entTable);
+		sc.gc.switchRoom(entTable);
 	    }
 	}
     }
@@ -298,277 +723,277 @@ var fillMapSquare = function(y, x){
     return true;
 }
 
-function coral_split(y, x){
-    var filled;
+// function coral_split(y, x){
+//     var filled;
 
-    filled = 0;
+//     filled = 0;
     
-    //Randomly decide if we will split
-    if(Math.random() < SPLIT_PROB){
-	for(var i = 0; i < Math.floor(Math.random() * 4) + 1; i++){
-	    filled = coral(y, x) + filled;
-	}
-    }
-    //Return the number of filled squares
-    return filled;
-}
+//     //Randomly decide if we will split
+//     if(Math.random() < SPLIT_PROB){
+// 	for(var i = 0; i < Math.floor(Math.random() * 4) + 1; i++){
+// 	    filled = coral(y, x) + filled;
+// 	}
+//     }
+//     //Return the number of filled squares
+//     return filled;
+// }
 
-function coral(y,x){
-    var r;
-    var filled;
+// function coral(y,x){
+//     var r;
+//     var filled;
 
-    //Pick a seed square
-    if(x == -1 && y == -1){
-	console.log("creating seed");
-	x = Math.floor(Math.random() * NUM_MAP_COLUMN);
-	y = Math.floor(Math.random() * NUM_MAP_ROW);
-	console.log(y + ", " + x);
-	//Fill the seed square
-	mapBuffer[y][x] = "#";
-    }
+//     //Pick a seed square
+//     if(x == -1 && y == -1){
+// 	console.log("creating seed");
+// 	x = Math.floor(Math.random() * NUM_MAP_COLUMN);
+// 	y = Math.floor(Math.random() * NUM_MAP_ROW);
+// 	console.log(y + ", " + x);
+// 	//Fill the seed square
+// 	mapBuffer[y][x] = "#";
+//     }
 
-    checked = 0;
-    filled  = 0;
+//     checked = 0;
+//     filled  = 0;
     
-    while(checked < 4){
-	//UP    - 0
-	//DOWN  - 1
-	//LEFT  - 2
-	//RIGHT - 3
-	r = Math.floor(Math.random() * 4);
-	switch(r){
-	case 0:
-	    if(fillMapSquare(y-1, x)){
-		checked += 4;
-		filled++;
-		filled = coral(y-1, x) + filled;
+//     while(checked < 4){
+// 	//UP    - 0
+// 	//DOWN  - 1
+// 	//LEFT  - 2
+// 	//RIGHT - 3
+// 	r = Math.floor(Math.random() * 4);
+// 	switch(r){
+// 	case 0:
+// 	    if(fillMapSquare(y-1, x)){
+// 		checked += 4;
+// 		filled++;
+// 		filled = coral(y-1, x) + filled;
 		
-		//Split the coral
-		filled = coral_split(y, x) + filled;
+// 		//Split the coral
+// 		filled = coral_split(y, x) + filled;
 
-		return filled;
-		break;
-	    }else{
-		r = (r + 1) % 4;
-		checked++;
-	    }
-	case 1:
-	    if(fillMapSquare(y+1, x)){
-		checked += 4;
-		filled++;
-		filled = coral(y+1, x) + filled;
+// 		return filled;
+// 		break;
+// 	    }else{
+// 		r = (r + 1) % 4;
+// 		checked++;
+// 	    }
+// 	case 1:
+// 	    if(fillMapSquare(y+1, x)){
+// 		checked += 4;
+// 		filled++;
+// 		filled = coral(y+1, x) + filled;
 		
-		//Split the coral
-		filled = coral_split(y, x) + filled;
+// 		//Split the coral
+// 		filled = coral_split(y, x) + filled;
 		
-		return filled;
-		break;
-	    }else{
-		r = (r + 1) % 4;
-		checked++;
-	    }
-	case 2:
-	    if(fillMapSquare(y, x-1)){
-		checked += 4;
-		filled++;
-		filled = coral(y, x-1) + filled;
+// 		return filled;
+// 		break;
+// 	    }else{
+// 		r = (r + 1) % 4;
+// 		checked++;
+// 	    }
+// 	case 2:
+// 	    if(fillMapSquare(y, x-1)){
+// 		checked += 4;
+// 		filled++;
+// 		filled = coral(y, x-1) + filled;
 
-		//Split the coral
-		filled = coral_split(y, x) + filled;
+// 		//Split the coral
+// 		filled = coral_split(y, x) + filled;
 		
-		return filled;
-		break;
-	    }else{
-		r = (r + 1) % 4;
-		checked++;
-	    }
-	case 3:
-	    if(fillMapSquare(y, x+1)){
-		checked += 4;
-		filled++;
-		filled = coral(y, x+1) + filled;
+// 		return filled;
+// 		break;
+// 	    }else{
+// 		r = (r + 1) % 4;
+// 		checked++;
+// 	    }
+// 	case 3:
+// 	    if(fillMapSquare(y, x+1)){
+// 		checked += 4;
+// 		filled++;
+// 		filled = coral(y, x+1) + filled;
 		
-		//Split the coral
-		filled = coral_split(y, x) + filled;
+// 		//Split the coral
+// 		filled = coral_split(y, x) + filled;
 		
-		return filled;
-		break;
-	    }else{
-		r = (r + 1) % 4;
-		checked++;
-	    }
-	}
-    }
+// 		return filled;
+// 		break;
+// 	    }else{
+// 		r = (r + 1) % 4;
+// 		checked++;
+// 	    }
+// 	}
+//     }
     return filled;
 }
 
 //asciidisplay stuff
 //////////////////////////////////////////////////
-var drawDisplay = function(){
-    for(var y = 0; y < NUM_ROW; y++){
-	for(var x = 0; x < NUM_COLUMN; x++){
-	    drawChar(y, x, asciidisplay[y][x]);
-	}
-    }
-}
+// var drawDisplay = function(){
+//     for(var y = 0; y < NUM_ROW; y++){
+// 	for(var x = 0; x < NUM_COLUMN; x++){
+// 	    sc.gc.drawChar(y, x, asciidisplay[y][x]);
+// 	}
+//     }
+// }
 
-var drawGridBuffer = function(){
-    for(var y = 0; y < NUM_ROW; y++){
-	for(var x = 0; x < NUM_COLUMN; x++){
-	    asciidisplay[y][x] = displayBuffer[y][x];
-	}
-    }
-}
+// var drawGridBuffer = function(){
+//     for(var y = 0; y < NUM_ROW; y++){
+// 	for(var x = 0; x < NUM_COLUMN; x++){
+// 	    asciidisplay[y][x] = displayBuffer[y][x];
+// 	}
+//     }
+// }
 
 //Hopefully my child... the time will never come when
 //you must use this shit
-var grid_delta_update_draw_hyper_drive_activate = function(){
-    for(var y = 0; y < NUM_ROW; y++){
-	for(var x = 0; x < NUM_COLUMN; x++){
-	    if(asciidisplay[y][x] != displayBuffer[y][x]){
-		asciidisplay[y][x] = displayBuffer[y][x];
-		drawChar(y, x, asciidisplay[y][x]);
-	    }
-	}
-    }
-}
+// var grid_delta_update_draw_hyper_drive_activate = function(){
+//     for(var y = 0; y < NUM_ROW; y++){
+// 	for(var x = 0; x < NUM_COLUMN; x++){
+// 	    if(asciidisplay[y][x] != displayBuffer[y][x]){
+// 		asciidisplay[y][x] = displayBuffer[y][x];
+// 		sc.gc.drawChar(y, x, asciidisplay[y][x]);
+// 	    }
+// 	}
+//     }
+// }
 
-var drawChar = function(charY, charX, character, fColor = "#ffffff", bColor = "#000000"){
-    var origContext;
+// var drawChar = function(charY, charX, character, fColor = "#ffffff", bColor = "#000000"){
+//     var origContext;
     
-    //origContext = context;
+//     //origContext = context;
     
-    context.textAlign = "center";
-    context.font = FONT + "px sans-serif";
+//     context.textAlign = "center";
+//     context.font = FONT + "px sans-serif";
 
-    context.fillStyle = bColor;
+//     context.fillStyle = bColor;
     
-    //Draw the BKG
-    context.fillRect((charX * GRID_X_SPACING) + GRID_X_BUFFER,
-		     (charY * GRID_Y_SPACING) + GRID_X_BUFFER,
-		     GRID_X_SPACING - 1,
-		     GRID_Y_SPACING - 1);
+//     //Draw the BKG
+//     context.fillRect((charX * GRID_X_SPACING) + GRID_X_BUFFER,
+// 		     (charY * GRID_Y_SPACING) + GRID_X_BUFFER,
+// 		     GRID_X_SPACING - 1,
+// 		     GRID_Y_SPACING - 1);
 
-    context.fillStyle = fColor;
+//     context.fillStyle = fColor;
 
-    //Draw the CHAR
-    context.fillText(character, 
-		     (FONT_X_SPACING * charX) + FONT_X_BUFFER, 
-		     (FONT_Y_SPACING * charY) + FONT_Y_BUFFER);
+//     //Draw the CHAR
+//     context.fillText(character, 
+// 		     (FONT_X_SPACING * charX) + FONT_X_BUFFER, 
+// 		     (FONT_Y_SPACING * charY) + FONT_Y_BUFFER);
 
-    //context = origContext;
-}
+//     //context = origContext;
+// }
 
 //Controller
 //////////////////////////////////////////////////
-var executeBehavior = function(entTable){
-    //TODO refactor this to account for arrays...
-    for (var key in entTable){
-	//I think element [1] is supposed to be the
-	//present element...
-	if(entTable[key][0].behavior){
-	    entTable[key][0].behavior[0].execute(entTable[key][1]);
-	}
-    }
-}
+// var executeBehavior = function(entTable){
+//     //TODO refactor this to account for arrays...
+//     for (var key in entTable){
+// 	//I think element [1] is supposed to be the
+// 	//present element...
+// 	if(entTable[key][0].behavior){
+// 	    entTable[key][0].behavior[0].execute(entTable[key][1]);
+// 	}
+//     }
+// }
 
-var switchRandomRoom = function(entTable){
-    //Pick a random spot on the game map
-    tempArr = mapRandArray[Math.floor(Math.random(mapRandArray.length))];
-    //mapPosTable["Fay"] = tempArr;
+// var switchRandomRoom = function(entTable){
+//     //Pick a random spot on the game map
+//     tempArr = mapRandArray[Math.floor(Math.random(mapRandArray.length))];
+//     //mapPosTable["Fay"] = tempArr;
 
-    entTable["Fay"][0].mapY = tempArr[0];
-    entTable["Fay"][0].mapX = tempArr[1];
-    entTable["Fay"][1].mapY = tempArr[0];
-    entTable["Fay"][1].mapX = tempArr[1];
+//     entTable["Fay"][0].mapY = tempArr[0];
+//     entTable["Fay"][0].mapX = tempArr[1];
+//     entTable["Fay"][1].mapY = tempArr[0];
+//     entTable["Fay"][1].mapX = tempArr[1];
     
-    //Pick the center spot on the game grid
-    tempArr = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)];
-    //gridPosTable["Fay"] = tempArr;
+//     //Pick the center spot on the game grid
+//     tempArr = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)];
+//     //gridPosTable["Fay"] = tempArr;
 
-    // entTable["Fay"][0].gridY = tempArr[0];
-    // entTable["Fay"][0].gridX = tempArr[1];
-    entTable["Fay"][1].gridY = tempArr[0];
-    entTable["Fay"][1].gridX = tempArr[1];
+//     // entTable["Fay"][0].gridY = tempArr[0];
+//     // entTable["Fay"][0].gridX = tempArr[1];
+//     entTable["Fay"][1].gridY = tempArr[0];
+//     entTable["Fay"][1].gridX = tempArr[1];
 
-    console.log("Fay moved to " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
-}
+//     console.log("Fay moved to " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
+// }
 
-var switchAdjRoom = function(entTable){
-    console.log("Switching to an adjacent room");
+// var switchAdjRoom = function(entTable){
+//     console.log("Switching to an adjacent room");
 
-    if(entTable["Fay"][0].gridX > NUM_COLUMN){
-	//Exit east
-	entTable["Fay"][1].gridX = 0;
-	entTable["Fay"][1].mapX++;
-    }else if (entTable["Fay"][0].gridX < 0){
-	//Exit west
-	entTable["Fay"][1].gridX = NUM_COLUMN;
-	entTable["Fay"][1].mapX--;
-    }else if (entTable["Fay"][0].gridY > NUM_ROW){
-	//Exit south
-	entTable["Fay"][1].gridY = 0;
-	entTable["Fay"][1].mapY++;
-    }else if (entTable["Fay"][0].gridY < 0){
-	//Exit north
-	entTable["Fay"][1].gridY = NUM_ROW;
-	entTable["Fay"][1].mapY--;
-    }
+//     if(entTable["Fay"][0].gridX > NUM_COLUMN){
+// 	//Exit east
+// 	entTable["Fay"][1].gridX = 0;
+// 	entTable["Fay"][1].mapX++;
+//     }else if (entTable["Fay"][0].gridX < 0){
+// 	//Exit west
+// 	entTable["Fay"][1].gridX = NUM_COLUMN;
+// 	entTable["Fay"][1].mapX--;
+//     }else if (entTable["Fay"][0].gridY > NUM_ROW){
+// 	//Exit south
+// 	entTable["Fay"][1].gridY = 0;
+// 	entTable["Fay"][1].mapY++;
+//     }else if (entTable["Fay"][0].gridY < 0){
+// 	//Exit north
+// 	entTable["Fay"][1].gridY = NUM_ROW;
+// 	entTable["Fay"][1].mapY--;
+//     }
 
-    console.log("Moving from " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX +
-		"... to " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
-}
+//     console.log("Moving from " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX +
+// 		"... to " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
+// }
 
 
-//TO DO
-//Make sure this method works for entities that are not Fay
-var switchRoom = function(entTable){
-    var tempArr;
+// //TO DO
+// //Make sure this method works for entities that are not Fay
+// var switchRoom = function(entTable){
+//     var tempArr;
 
-    console.log("Called switchRoom()");
-    if((entTable["Fay"][0].mapY == -1 && entTable["Fay"][0].mapX == -1) ||
-       (entTable["Fay"][1].mapY == -1 && entTable["Fay"][1].mapX == -1)){
-	switchRandomRoom(entTable);
-    } else {
-	switchAdjRoom(entTable);
-    }
+//     console.log("Called switchRoom()");
+//     if((entTable["Fay"][0].mapY == -1 && entTable["Fay"][0].mapX == -1) ||
+//        (entTable["Fay"][1].mapY == -1 && entTable["Fay"][1].mapX == -1)){
+// 	switchRandomRoom(entTable);
+//     } else {
+// 	switchAdjRoom(entTable);
+//     }
 
-    //Draw the background
-    displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
-    drawBkg(entTable);
-    entTable["Fay"][1].isMoving = true;
+//     //Draw the background
+//     displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
+//     drawBkg(entTable);
+//     entTable["Fay"][1].isMoving = true;
 
-    // console.log(Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()));
-    // console.log(Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()));
+//     // console.log(Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()));
+//     // console.log(Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()));
     
-    // console.log("truth status of the update ent loop: " + (entTable["Fay"][1].isMoving == true &&
-    // 	   (Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()) > 0 ||
-    // 	    Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()) > 0)));
+//     // console.log("truth status of the update ent loop: " + (entTable["Fay"][1].isMoving == true &&
+//     // 	   (Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()) > 0 ||
+//     // 	    Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()) > 0)));
     
-    // entTable["Fay"][0].mapY = entTable["Fay"][1].mapY;
-    // entTable["Fay"][0].mapX = entTable["Fay"][1].mapX;
-}
+//     // entTable["Fay"][0].mapY = entTable["Fay"][1].mapY;
+//     // entTable["Fay"][0].mapX = entTable["Fay"][1].mapX;
+// }
 
 //Game loop stuff
 //////////////////////////////////////////////////
 
-//Dont forget that b is just a test variable
-//we can remove it later
-var update = function(time, entTable){
-    executeBehavior(entTable);
+// //Dont forget that b is just a test variable
+// //we can remove it later
+// var update = function(time, entTable){
+//     executeBehavior(entTable);
 
-    //drawBkg(entTable);
-    updateEnt(entTable);
-    grid_delta_update_draw_hyper_drive_activate();
-    //drawGridBuffer();
-    //drawDisplay();
+//     //drawBkg(entTable);
+//     updateEnt(entTable);
+//     grid_delta_update_draw_hyper_drive_activate();
+//     //drawGridBuffer();
+//     //drawDisplay();
     
-    //if(b){
-    //	drawChar(0, 0, "X", "#ff0000");
-    //}else{
-    //	drawChar(0, 0, "X");
-    //}
-}
+//     //if(b){
+//     //	drawChar(0, 0, "X", "#ff0000");
+//     //}else{
+//     //	drawChar(0, 0, "X");
+//     //}
+// }
 
 //Init stuff
 //////////////////////////////////////////////////
@@ -594,114 +1019,25 @@ var init2dArray = function(height, width, defaultVal){
     return arr;
 }
 
-var loop = function(lastFrameTime, entTable){
-    var time;
+// var loop = function(lastFrameTime, entTable){
+//     var time;
 
-    //Update timer
-    // time = (new Date()).getTime();
-    //console.log(Math.floor(Math.pow((time - lastFrameTime), -1) * 1000));
+//     //Update timer
+//     // time = (new Date()).getTime();
+//     //console.log(Math.floor(Math.pow((time - lastFrameTime), -1) * 1000));
 
-    //Update game state
-    update((time - lastFrameTime), entTable);
+//     //Update game state
+//     update((time - lastFrameTime), entTable);
     
-    //TODO write this method and call it here....
-    //Update room if needed
+//     //TODO write this method and call it here....
+//     //Update room if needed
     
-    //Get the next frame
-    requestAnimFrame(function(){
-	loop(time, entTable);
-    });
-}
+//     //Get the next frame
+//     requestAnimFrame(function(){
+// 	loop(time, entTable);
+//     });
+// }
 
-//This is where the game starts bitch
-var init = function(){
-    var coral_size;
-    
-    var mapPosTable;
-    var gridPosTable;
-    var entTable;
-
-    //Contains all our entity objects...
-    var entTable;
-
-    //var jstick;
-    jstick = new Joystick();
-
-    //context stuff
-    // context.fillStyle = bColor;
-    // context.fillStyle = fColor;
-    context.textAlign = "center";
-    context.font = FONT + "px sans-serif";
-
-    //Init map stuff
-    coral_size = 0;
-    while(coral_size < 200){
-	initMap();
-	console.log("Coraling...");
-	coral_size = coral(-1, -1);
-	console.log("coral size..." + coral_size);
-	//Keep doing this until the map is our requisite
-	//size....
-    }
-    //Initalize position tables
-    mapPosTable  = {};
-    gridPosTable = {};
-
-    
-    entTable     = {};
-
-    entTable["Fay"] = [];
-    for(var i=0; i<2; i++){
-	entTable["Fay"][i] = {};
-	entTable["Fay"][i] = new Entity("Fay");
-	entTable["Fay"][i].defineBehavior([walkBehavior]);
-    }
-    //entTable["Fay"][0] = new Entity("Fay");
-    //entTable["Fay"][0].defineBehavior([walkBehavior]);
-    //entTable["Fay"][0].defineBehavior([runBehavior]);
-
-    console.log("Fay was placed at map location..." + 
-		entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
-    
-
-    //Init asciidisplay stuff
-    initCanvas();
-    asciidisplay  = init2dArray(NUM_ROW, NUM_COLUMN, "" );
-    displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
-
-    //Get set up in the inital room
-    switchRoom(entTable);
-
-    //Update the grid buffer and whatever
-    //drawGridBuffer();
-    //drawDisplay();
-
-    //Add listeners for the keyboard
-    document.addEventListener('keydown', function(event){
-	if(event.keyCode == 87){
-	    jstick.up    = true;
-	}else if(event.keyCode == 83){
-	    jstick.down  = true;
-	}else if(event.keyCode == 65){
-	    jstick.left  = true;
-	}else if(event.keyCode == 68){
-	    jstick.right = true;
-	}
-    });
-    document.addEventListener('keyup', function(event){
-	if(event.keyCode == 87){
-	    jstick.up    = false;
-	}else if(event.keyCode == 83){
-	    jstick.down  = false;
-	}else if(event.keyCode == 65){
-	    jstick.left  = false;
-	}else if(event.keyCode == 68){
-	    jstick.right = false;
-	}
-    });
-    //Start the game loop
-    loop(new Date().getTime(), entTable);
-}
 
 //This closure gets the valid requestAnim function
 //and then runs it
@@ -716,6 +1052,12 @@ window.requestAnimFrame = (function(callback){
 //context.font = "40px Courier";
 //drawChar(0, 0, "X", "#FF0000");
 
-init();
+var sc = new SuperController();
+
+sc.gcInit();
+
+// var gc = new GridController();
+
+// gc.init();
 
 //console.log("testing if this works....");
