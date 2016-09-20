@@ -149,7 +149,7 @@ function GridController(){
 	instance.executeBehavior(entTable);
 
 	//drawBkg(entTable);
-	updateEnt(entTable);
+	instance.updateEnt(entTable);
 	instance.grid_delta_update_draw_hyper_drive_activate();
 	//drawGridBuffer();
 	//drawDisplay();
@@ -183,7 +183,7 @@ function GridController(){
 	//Init map stuff
 	coral_size = 0;
 	while(coral_size < 200){
-	    initMap();
+	    instance.initMap();
 	    console.log("Coraling...");
 	    coral_size = instance.coral(-1, -1);
 	    console.log("coral size..." + coral_size);
@@ -200,11 +200,11 @@ function GridController(){
 	for(var i=0; i<2; i++){
 	    entTable["Fay"][i] = {};
 	    entTable["Fay"][i] = new Entity("Fay");
-	    entTable["Fay"][i].defineBehavior([walkBehavior]);
+	    entTable["Fay"][i].defineBehavior([instance.walkBehavior]);
 	}
 	//entTable["Fay"][0] = new Entity("Fay");
-	//entTable["Fay"][0].defineBehavior([walkBehavior]);
-	//entTable["Fay"][0].defineBehavior([runBehavior]);
+	//entTable["Fay"][0].defineBehavior([instance.walkBehavior]);
+	//entTable["Fay"][0].defineBehavior([instance.runBehavior]);
 
 	console.log("Fay was placed at map location..." + 
 		    entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
@@ -265,7 +265,7 @@ function GridController(){
 
 	//Draw the background
 	displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
-	drawBkg(entTable);
+	instance.drawBkg(entTable);
 	entTable["Fay"][1].isMoving = true;
 
 	// console.log(Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()));
@@ -430,7 +430,7 @@ function GridController(){
 	    r = Math.floor(Math.random() * 4);
 	    switch(r){
 	    case 0:
-		if(fillMapSquare(y-1, x)){
+		if(instance.fillMapSquare(y-1, x)){
 		    checked += 4;
 		    filled++;
 		    filled = instance.coral(y-1, x) + filled;
@@ -445,7 +445,7 @@ function GridController(){
 		    checked++;
 		}
 	    case 1:
-		if(fillMapSquare(y+1, x)){
+		if(instance.fillMapSquare(y+1, x)){
 		    checked += 4;
 		    filled++;
 		    filled = instance.coral(y+1, x) + filled;
@@ -460,7 +460,7 @@ function GridController(){
 		    checked++;
 		}
 	    case 2:
-		if(fillMapSquare(y, x-1)){
+		if(instance.fillMapSquare(y, x-1)){
 		    checked += 4;
 		    filled++;
 		    filled = instance.coral(y, x-1) + filled;
@@ -475,7 +475,7 @@ function GridController(){
 		    checked++;
 		}
 	    case 3:
-		if(fillMapSquare(y, x+1)){
+		if(instance.fillMapSquare(y, x+1)){
 		    checked += 4;
 		    filled++;
 		    filled = instance.coral(y, x+1) + filled;
@@ -494,6 +494,219 @@ function GridController(){
 	return filled;
     }
 
+    //Fills the square and returns true
+    //otherwise does nothing and returns false
+    instance.fillMapSquare = function(y, x){
+	if(y >= NUM_MAP_ROW || y < 0 || x >= NUM_MAP_COLUMN || x < 0){
+	    return false;
+	}
+	if(mapBuffer[y][x] != " "){
+	    return false;
+	}
+	mapBuffer[y][x] = "#";
+	mapRandArray.push([y, x]);
+	return true;
+    }
+
+    //map stuff
+    //////////////////////////////////////////////////
+    instance.initMap = function(){
+	mapBuffer    = [];	
+	mapRandArray = [];
+	for(var y = 0; y < NUM_MAP_ROW; y++){
+	    mapBuffer[y] = new Array(NUM_MAP_ROW);
+	    for(var x = 0; x < NUM_MAP_COLUMN; x++){
+		mapBuffer[y][x] = " ";
+	    }
+	}
+    }
+
+    //Should position 0 be the POTENTIAL new coordinates or the current coordinates??
+    instance.updateEnt = function(entTable){
+	var isInBound = [false, false];
+	
+	for(var key in entTable){
+
+	    if(entTable[key][1].isMoving == true &&
+	       (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
+		Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
+	      ){
+		//Set boolean so this function doesn't run again until the next position change
+		entTable[key][1].isMoving = false;
+		entTable[key][0].isMoving = false;
+
+		//Check which positions are in legal boundaries
+		isInBound[0] = entTable[key][0].getGridY() >= 0 && entTable[key][0].getGridY() < NUM_ROW &&
+		    entTable[key][0].getGridX() >= 0 && entTable[key][0].getGridX() < NUM_COLUMN;
+		isInBound[1] = entTable[key][1].getGridY() >= 0 && entTable[key][1].getGridY() < NUM_ROW &&
+		    entTable[key][1].getGridX() >= 0 && entTable[key][1].getGridX() < NUM_COLUMN;
+
+		//Detect collision
+		if(isInBound[1] && instance.checkCollide(entTable, key)){
+		    entTable[key][1].gridY = entTable[key][0].getGridY();
+		    entTable[key][1].gridX = entTable[key][0].getGridX();
+		    continue;
+		}
+		
+		//We might want to refactor so that the default bkg tile is controlled
+		//by a variable....
+		if(isInBound[0]){
+	    	    displayBuffer[entTable[key][0].getGridY()][entTable[key][0].getGridX()] = " ";
+		}
+
+		//Update the displayBuffer so the character will be drawn in their destination cell
+		if(isInBound[1]){
+		    displayBuffer[entTable[key][1].getGridY()][entTable[key][1].getGridX()] = entTable[key][1].sigil;
+		}
+
+		//Update the characters position if there is no collision
+		entTable[key][0].gridY = entTable[key][1].gridY;
+		entTable[key][0].gridX = entTable[key][1].gridX;
+		// entTable[key][0].gridY = entTable[key][1].getGridY();
+		// entTable[key][0].gridX = entTable[key][1].getGridX();
+
+		//Room switch
+		if(!(isInBound[1])){
+		    sc.gc.switchRoom(entTable);
+		}
+	    }
+	}
+    }
+
+    instance.checkCollide = function(entTable, entName){
+	for(var key in entTable){
+	    if(displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] != " "){
+		console.log("Collided with " + displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] + "!!");
+		return true;
+	    }
+	    
+	    if(entTable[key][1].getGridY() == entTable[entName][1].getGridY() && entTable[key][1].getGridX() == entTable[entName][1].getGridX() && key != entName){
+		console.log("Collided with " + key + "!!!");
+		return true;
+	    }
+	}
+	return false;
+    }
+
+    //use a FIFO queue
+    //use queue.shift() to dequeue an item in FIFO order
+    //a[0] is the top of the queue
+    instance.drawBkg = function(entTable){
+	console.log("Drawing... " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
+	
+	instance.addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
+
+	if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY - 1][entTable["Fay"][1].mapX] == '#'){
+	    instance.addSheetTile(0, 4, 3, NUM_COLUMN - 4, " ");
+	    //Draw a north exit
+	}
+	if(entTable["Fay"][1].mapY + 1 < NUM_MAP_ROW && mapBuffer[entTable["Fay"][1].mapY + 1][entTable["Fay"][1].mapX] == '#'){
+	    instance.addSheetTile(NUM_ROW - 3, 4, NUM_ROW, NUM_COLUMN - 4, " ");
+	    //Draw a south exit
+	}
+	if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX - 1] == '#'){
+	    instance.addSheetTile(3, 0, NUM_ROW -3, NUM_COLUMN - 4, " ");
+	    //Draw a west exit
+	}
+	if(entTable["Fay"][1].mapY + 1 < NUM_MAP_COLUMN && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX + 1] == '#'){
+	    instance.addSheetTile(3, NUM_COLUMN - 4, NUM_ROW - 3, NUM_COLUMN, " ");
+	    //Draw a east exit
+	}
+    }
+
+    instance.addSheetTile = function(start_y, start_x, end_y, end_x, tile){
+	for(var i = start_x; i < end_x; i++){
+	    instance.addMultipleTile(start_y, i, end_y, i, tile);
+	}
+    }
+    
+    instance.addMultipleTile = function(start_y, start_x, end_y, end_x, tile){
+	if(start_y == end_y && start_x <= end_x){
+	    for(var i = start_x; i < end_x; i++){
+		displayBuffer[start_y][i] = tile;
+	    }
+	}else if(start_x == end_x && start_y <= end_y){
+	    for(var i = start_y; i < end_y; i++){
+		displayBuffer[i][start_x] = tile;
+	    }
+	}else{
+	    throw new Error("add_multi_tile() invalid coordinates");
+	}
+    }
+
+    instance.walkBehavior = {
+	execute: function(ent){
+	    if(jstick.up == true){
+		if(Math.floor(ent.gridY - 0.2) < Math.floor(ent.gridY)){
+		    //Check case for diagnol movement
+		    if(jstick.left == true){
+			ent.gridX -= 1;
+		    }
+		    if(jstick.right == true){
+			ent.gridX += 1;
+		    }
+		    //Set flag for changing the cell position
+		    ent.isMoving = true;
+		}
+		ent.gridY -= 0.2;
+		return;
+	    }
+	    if(jstick.down == true){
+		if(Math.floor(ent.gridY + 0.2) > Math.floor(ent.gridY)){
+		    //Check case for diagnol movement
+		    if(jstick.left == true){
+			ent.gridX -= 1;
+		    }
+		    if(jstick.right == true){
+			ent.gridX += 1;
+		    }
+		    //Set flag for changing the cell position
+		    ent.isMoving = true;
+		}
+		ent.gridY += 0.2;
+		return;
+	    }
+	    if(jstick.left == true){
+		if(Math.floor(ent.gridX - 0.2) < Math.floor(ent.gridX)){
+		    ent.isMoving = true;
+		}
+		ent.gridX -= 0.2;
+		return;
+	    }
+	    if(jstick.right == true){
+		if(Math.floor(ent.gridX + 0.2) > Math.floor(ent.gridX)){
+		    ent.isMoving = true;
+		}
+		ent.gridX += 0.2;
+		return;
+	    }
+	    //ent.map
+	}
+    };
+
+    instance.runBehavior = {
+	execute: function(ent){
+	    console.log("Executed the control behavior");
+	    if(jstick.up == true){
+		ent.gridY -= 2;
+		ent.isMoving = true;
+	    }
+	    if(jstick.down == true){
+		ent.gridY += 2;
+		ent.isMoving = true;
+	    }
+	    if(jstick.left == true){
+		ent.gridX -= 2;
+		ent.isMoving = true;
+	    }
+	    if(jstick.right == true){
+		ent.gridX += 2;
+		ent.isMoving = true;
+	    }
+	    //ent.map
+	}
+    };
+
     
     return instance;
 }
@@ -501,78 +714,78 @@ function GridController(){
 //Behaviors
 //////////////////////////////////////////////////
 
-var walkBehavior = {
-    execute: function(ent){
-	if(jstick.up == true){
-	    if(Math.floor(ent.gridY - 0.2) < Math.floor(ent.gridY)){
-		//Check case for diagnol movement
-		if(jstick.left == true){
-		    ent.gridX -= 1;
-		}
-		if(jstick.right == true){
-		    ent.gridX += 1;
-		}
-		//Set flag for changing the cell position
-		ent.isMoving = true;
-	    }
-	    ent.gridY -= 0.2;
-	    return;
-	}
-	if(jstick.down == true){
-	    if(Math.floor(ent.gridY + 0.2) > Math.floor(ent.gridY)){
-		//Check case for diagnol movement
-		if(jstick.left == true){
-		    ent.gridX -= 1;
-		}
-		if(jstick.right == true){
-		    ent.gridX += 1;
-		}
-		//Set flag for changing the cell position
-		ent.isMoving = true;
-	    }
-	    ent.gridY += 0.2;
-	    return;
-	}
-	if(jstick.left == true){
-	    if(Math.floor(ent.gridX - 0.2) < Math.floor(ent.gridX)){
-		ent.isMoving = true;
-	    }
-	    ent.gridX -= 0.2;
-	    return;
-	}
-	if(jstick.right == true){
-	    if(Math.floor(ent.gridX + 0.2) > Math.floor(ent.gridX)){
-		ent.isMoving = true;
-	    }
-	    ent.gridX += 0.2;
-	    return;
-	}
-	//ent.map
-    }
-};
+// var walkBehavior = {
+//     execute: function(ent){
+// 	if(jstick.up == true){
+// 	    if(Math.floor(ent.gridY - 0.2) < Math.floor(ent.gridY)){
+// 		//Check case for diagnol movement
+// 		if(jstick.left == true){
+// 		    ent.gridX -= 1;
+// 		}
+// 		if(jstick.right == true){
+// 		    ent.gridX += 1;
+// 		}
+// 		//Set flag for changing the cell position
+// 		ent.isMoving = true;
+// 	    }
+// 	    ent.gridY -= 0.2;
+// 	    return;
+// 	}
+// 	if(jstick.down == true){
+// 	    if(Math.floor(ent.gridY + 0.2) > Math.floor(ent.gridY)){
+// 		//Check case for diagnol movement
+// 		if(jstick.left == true){
+// 		    ent.gridX -= 1;
+// 		}
+// 		if(jstick.right == true){
+// 		    ent.gridX += 1;
+// 		}
+// 		//Set flag for changing the cell position
+// 		ent.isMoving = true;
+// 	    }
+// 	    ent.gridY += 0.2;
+// 	    return;
+// 	}
+// 	if(jstick.left == true){
+// 	    if(Math.floor(ent.gridX - 0.2) < Math.floor(ent.gridX)){
+// 		ent.isMoving = true;
+// 	    }
+// 	    ent.gridX -= 0.2;
+// 	    return;
+// 	}
+// 	if(jstick.right == true){
+// 	    if(Math.floor(ent.gridX + 0.2) > Math.floor(ent.gridX)){
+// 		ent.isMoving = true;
+// 	    }
+// 	    ent.gridX += 0.2;
+// 	    return;
+// 	}
+// 	//ent.map
+//     }
+// };
 
-var runBehavior = {
-    execute: function(ent){
-	console.log("Executed the control behavior");
-	if(jstick.up == true){
-	    ent.gridY -= 2;
-	    ent.isMoving = true;
-	}
-	if(jstick.down == true){
-	    ent.gridY += 2;
-	    ent.isMoving = true;
-	}
-	if(jstick.left == true){
-	    ent.gridX -= 2;
-	    ent.isMoving = true;
-	}
-	if(jstick.right == true){
-	    ent.gridX += 2;
-	    ent.isMoving = true;
-	}
-	//ent.map
-    }
-};
+// var runBehavior = {
+//     execute: function(ent){
+// 	console.log("Executed the control behavior");
+// 	if(jstick.up == true){
+// 	    ent.gridY -= 2;
+// 	    ent.isMoving = true;
+// 	}
+// 	if(jstick.down == true){
+// 	    ent.gridY += 2;
+// 	    ent.isMoving = true;
+// 	}
+// 	if(jstick.left == true){
+// 	    ent.gridX -= 2;
+// 	    ent.isMoving = true;
+// 	}
+// 	if(jstick.right == true){
+// 	    ent.gridX += 2;
+// 	    ent.isMoving = true;
+// 	}
+// 	//ent.map
+//     }
+// };
 
 //class Fay extends Entity{
 //	constructor(name){
@@ -583,145 +796,145 @@ var runBehavior = {
 //Grid functions
 //////////////////////////////////////////////////
 
-var addMultipleTile = function(start_y, start_x, end_y, end_x, tile){
-    if(start_y == end_y && start_x <= end_x){
-	for(var i = start_x; i < end_x; i++){
-	    displayBuffer[start_y][i] = tile;
-	}
-    }else if(start_x == end_x && start_y <= end_y){
-	for(var i = start_y; i < end_y; i++){
-	    displayBuffer[i][start_x] = tile;
-	}
-    }else{
-	throw new Error("add_multi_tile() invalid coordinates");
-    }
-}
+// var addMultipleTile = function(start_y, start_x, end_y, end_x, tile){
+//     if(start_y == end_y && start_x <= end_x){
+// 	for(var i = start_x; i < end_x; i++){
+// 	    displayBuffer[start_y][i] = tile;
+// 	}
+//     }else if(start_x == end_x && start_y <= end_y){
+// 	for(var i = start_y; i < end_y; i++){
+// 	    displayBuffer[i][start_x] = tile;
+// 	}
+//     }else{
+// 	throw new Error("add_multi_tile() invalid coordinates");
+//     }
+// }
 
-var addSheetTile = function(start_y, start_x, end_y, end_x, tile){
-    for(var i = start_x; i < end_x; i++){
-	addMultipleTile(start_y, i, end_y, i, tile);
-    }
-}
+// var addSheetTile = function(start_y, start_x, end_y, end_x, tile){
+//     for(var i = start_x; i < end_x; i++){
+// 	addMultipleTile(start_y, i, end_y, i, tile);
+//     }
+// }
 
-//use a FIFO queue
-//use queue.shift() to dequeue an item in FIFO order
-//a[0] is the top of the queue
-var drawBkg = function(entTable){
-    console.log("Drawing... " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
+// //use a FIFO queue
+// //use queue.shift() to dequeue an item in FIFO order
+// //a[0] is the top of the queue
+// var drawBkg = fpunction(entTable){
+//     console.log("Drawing... " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
     
-    addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
+//     addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
 
-    if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY - 1][entTable["Fay"][1].mapX] == '#'){
-	addSheetTile(0, 4, 3, NUM_COLUMN - 4, " ");
-	//Draw a north exit
-    }
-    if(entTable["Fay"][1].mapY + 1 < NUM_MAP_ROW && mapBuffer[entTable["Fay"][1].mapY + 1][entTable["Fay"][1].mapX] == '#'){
-	addSheetTile(NUM_ROW - 3, 4, NUM_ROW, NUM_COLUMN - 4, " ");
-	//Draw a south exit
-    }
-    if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX - 1] == '#'){
-	addSheetTile(3, 0, NUM_ROW -3, NUM_COLUMN - 4, " ");
-	//Draw a west exit
-    }
-    if(entTable["Fay"][1].mapY + 1 < NUM_MAP_COLUMN && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX + 1] == '#'){
-	addSheetTile(3, NUM_COLUMN - 4, NUM_ROW - 3, NUM_COLUMN, " ");
-	//Draw a east exit
-    }
-}
+//     if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY - 1][entTable["Fay"][1].mapX] == '#'){
+// 	addSheetTile(0, 4, 3, NUM_COLUMN - 4, " ");
+// 	//Draw a north exit
+//     }
+//     if(entTable["Fay"][1].mapY + 1 < NUM_MAP_ROW && mapBuffer[entTable["Fay"][1].mapY + 1][entTable["Fay"][1].mapX] == '#'){
+// 	addSheetTile(NUM_ROW - 3, 4, NUM_ROW, NUM_COLUMN - 4, " ");
+// 	//Draw a south exit
+//     }
+//     if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX - 1] == '#'){
+// 	addSheetTile(3, 0, NUM_ROW -3, NUM_COLUMN - 4, " ");
+// 	//Draw a west exit
+//     }
+//     if(entTable["Fay"][1].mapY + 1 < NUM_MAP_COLUMN && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX + 1] == '#'){
+// 	addSheetTile(3, NUM_COLUMN - 4, NUM_ROW - 3, NUM_COLUMN, " ");
+// 	//Draw a east exit
+//     }
+// }
 
-var checkCollide = function(entTable, entName){
-    for(var key in entTable){
-	if(displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] != " "){
-	    console.log("Collided with " + displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] + "!!");
-	    return true;
-	}
+// var checkCollide = function(entTable, entName){
+//     for(var key in entTable){
+// 	if(displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] != " "){
+// 	    console.log("Collided with " + displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] + "!!");
+// 	    return true;
+// 	}
 	
-	if(entTable[key][1].getGridY() == entTable[entName][1].getGridY() && entTable[key][1].getGridX() == entTable[entName][1].getGridX() && key != entName){
-	    console.log("Collided with " + key + "!!!");
-	    return true;
-	}
-    }
-    return false;
-}
+// 	if(entTable[key][1].getGridY() == entTable[entName][1].getGridY() && entTable[key][1].getGridX() == entTable[entName][1].getGridX() && key != entName){
+// 	    console.log("Collided with " + key + "!!!");
+// 	    return true;
+// 	}
+//     }
+//     return false;
+// }
 
-//Should position 0 be the POTENTIAL new coordinates or the current coordinates??
-var updateEnt = function(entTable){
-    var isInBound = [false, false];
+// //Should position 0 be the POTENTIAL new coordinates or the current coordinates??
+// var updateEnt = function(entTable){
+//     var isInBound = [false, false];
     
-    for(var key in entTable){
+//     for(var key in entTable){
 
-	if(entTable[key][1].isMoving == true &&
-	   (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
-	    Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
-	  ){
-	    //Set boolean so this function doesn't run again until the next position change
-	    entTable[key][1].isMoving = false;
-	    entTable[key][0].isMoving = false;
+// 	if(entTable[key][1].isMoving == true &&
+// 	   (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
+// 	    Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
+// 	  ){
+// 	    //Set boolean so this function doesn't run again until the next position change
+// 	    entTable[key][1].isMoving = false;
+// 	    entTable[key][0].isMoving = false;
 
-	    //Check which positions are in legal boundaries
-	    isInBound[0] = entTable[key][0].getGridY() >= 0 && entTable[key][0].getGridY() < NUM_ROW &&
-		entTable[key][0].getGridX() >= 0 && entTable[key][0].getGridX() < NUM_COLUMN;
-	    isInBound[1] = entTable[key][1].getGridY() >= 0 && entTable[key][1].getGridY() < NUM_ROW &&
-		entTable[key][1].getGridX() >= 0 && entTable[key][1].getGridX() < NUM_COLUMN;
+// 	    //Check which positions are in legal boundaries
+// 	    isInBound[0] = entTable[key][0].getGridY() >= 0 && entTable[key][0].getGridY() < NUM_ROW &&
+// 		entTable[key][0].getGridX() >= 0 && entTable[key][0].getGridX() < NUM_COLUMN;
+// 	    isInBound[1] = entTable[key][1].getGridY() >= 0 && entTable[key][1].getGridY() < NUM_ROW &&
+// 		entTable[key][1].getGridX() >= 0 && entTable[key][1].getGridX() < NUM_COLUMN;
 
-	    //Detect collision
-	    if(isInBound[1] && checkCollide(entTable, key)){
-		entTable[key][1].gridY = entTable[key][0].getGridY();
-		entTable[key][1].gridX = entTable[key][0].getGridX();
-		continue;
-	    }
+// 	    //Detect collision
+// 	    if(isInBound[1] && checkCollide(entTable, key)){
+// 		entTable[key][1].gridY = entTable[key][0].getGridY();
+// 		entTable[key][1].gridX = entTable[key][0].getGridX();
+// 		continue;
+// 	    }
 	    
-	    //We might want to refactor so that the default bkg tile is controlled
-	    //by a variable....
-	    if(isInBound[0]){
-	    	displayBuffer[entTable[key][0].getGridY()][entTable[key][0].getGridX()] = " ";
-	    }
+// 	    //We might want to refactor so that the default bkg tile is controlled
+// 	    //by a variable....
+// 	    if(isInBound[0]){
+// 	    	displayBuffer[entTable[key][0].getGridY()][entTable[key][0].getGridX()] = " ";
+// 	    }
 
-	    //Update the displayBuffer so the character will be drawn in their destination cell
-	    if(isInBound[1]){
-		displayBuffer[entTable[key][1].getGridY()][entTable[key][1].getGridX()] = entTable[key][1].sigil;
-	    }
+// 	    //Update the displayBuffer so the character will be drawn in their destination cell
+// 	    if(isInBound[1]){
+// 		displayBuffer[entTable[key][1].getGridY()][entTable[key][1].getGridX()] = entTable[key][1].sigil;
+// 	    }
 
-	    //Update the characters position if there is no collision
-	    entTable[key][0].gridY = entTable[key][1].gridY;
-	    entTable[key][0].gridX = entTable[key][1].gridX;
-	    // entTable[key][0].gridY = entTable[key][1].getGridY();
-	    // entTable[key][0].gridX = entTable[key][1].getGridX();
+// 	    //Update the characters position if there is no collision
+// 	    entTable[key][0].gridY = entTable[key][1].gridY;
+// 	    entTable[key][0].gridX = entTable[key][1].gridX;
+// 	    // entTable[key][0].gridY = entTable[key][1].getGridY();
+// 	    // entTable[key][0].gridX = entTable[key][1].getGridX();
 
-	    //Room switch
-	    if(!(isInBound[1])){
-		sc.gc.switchRoom(entTable);
-	    }
-	}
-    }
-}
+// 	    //Room switch
+// 	    if(!(isInBound[1])){
+// 		sc.gc.switchRoom(entTable);
+// 	    }
+// 	}
+//     }
+// }
 
-//map stuff
-//////////////////////////////////////////////////
-var initMap = function(){
-    mapBuffer    = [];	
-    mapRandArray = [];
-    for(var y = 0; y < NUM_MAP_ROW; y++){
-	mapBuffer[y] = new Array(NUM_MAP_ROW);
-	for(var x = 0; x < NUM_MAP_COLUMN; x++){
-	    mapBuffer[y][x] = " ";
-	}
-    }
-}
+// //map stuff
+// //////////////////////////////////////////////////
+// var initMap = function(){
+//     mapBuffer    = [];	
+//     mapRandArray = [];
+//     for(var y = 0; y < NUM_MAP_ROW; y++){
+// 	mapBuffer[y] = new Array(NUM_MAP_ROW);
+// 	for(var x = 0; x < NUM_MAP_COLUMN; x++){
+// 	    mapBuffer[y][x] = " ";
+// 	}
+//     }
+// }
 
-//Fills the square and returns true
-//otherwise does nothing and returns false
-var fillMapSquare = function(y, x){
-    if(y >= NUM_MAP_ROW || y < 0 || x >= NUM_MAP_COLUMN || x < 0){
-	return false;
-    }
-    if(mapBuffer[y][x] != " "){
-	return false;
-    }
-    mapBuffer[y][x] = "#";
-    mapRandArray.push([y, x]);
-    return true;
-}
+// //Fills the square and returns true
+// //otherwise does nothing and returns false
+// var fillMapSquare = function(y, x){
+//     if(y >= NUM_MAP_ROW || y < 0 || x >= NUM_MAP_COLUMN || x < 0){
+// 	return false;
+//     }
+//     if(mapBuffer[y][x] != " "){
+// 	return false;
+//     }
+//     mapBuffer[y][x] = "#";
+//     mapRandArray.push([y, x]);
+//     return true;
+// }
 
 // function coral_split(y, x){
 //     var filled;
