@@ -92,7 +92,7 @@ function SuperController(){
     instance.mc = new MapController();
 
     instance.activeControllerLoop = instance.gc.loop;
-    instance.controllerLoop = [instance.gc.loop, instance.mc.loop];
+    instance.controllerLoop = [instance.mc.loop, instance.gc.loop];
 
     // Controller calls the loop for GridController
     // so we can stop events from occuring on the grid at
@@ -107,6 +107,11 @@ function SuperController(){
 	if(jstick.mapKey == true){
 	    instance.activeControllerLoop = instance.controllerLoop.shift();
 	    instance.controllerLoop.push(instance.activeControllerLoop);
+
+	    // This is a vile vile hack
+	    jstick.mapKey = false;
+	    // console.log("mapKey!");
+	    // console.log(instance.controllerLoop);
 	} 
 	
 	requestAnimFrame(function(){
