@@ -37,6 +37,8 @@ class Joystick {
 	this.down  = false;
 	this.left  = false;
 	this.right = false;
+
+	this.mapKey = false;
     }
 }
 
@@ -87,18 +89,30 @@ function SuperController(){
     instance.constructor = SuperController;
 
     instance.gc = new GridController();
+    instance.mc = new MapController();
+
+    instance.activeControllerLoop = instance.gc.loop;
+    instance.controllerLoop = [instance.gc.loop, instance.mc.loop];
 
     // Controller calls the loop for GridController
     // so we can stop events from occuring on the grid at
     // will....
     instance.loop = function(lastFrameTime, entTable){
 	var time;
-	
-	instance.gc.loop(lastFrameTime, entTable);
 
+	// instance.gc.loop(lastFrameTime, entTable);
+	
+	instance.activeControllerLoop(lastFrameTime, entTable);
+	
+	if(jstick.mapKey == true){
+	    instance.activeControllerLoop = instance.controllerLoop.shift();
+	    instance.controllerLoop.push(instance.activeControllerLoop);
+	} 
+	
 	requestAnimFrame(function(){
 	    instance.loop(time, entTable);
 	});
+
     }
 
     instance.gcInit = function(){
@@ -107,6 +121,26 @@ function SuperController(){
 	entTable = instance.gc.init();
 	instance.loop(new Date().getTime(), entTable);
 	// instance.loop
+    }
+
+    return instance;
+}
+
+function MapController(){
+    var instance;
+
+    MapController = function(){
+	return instance;
+    }
+
+    MapController.prototype = this;
+
+    instance = new MapController;
+
+    instance.constructor = MapController;
+
+    instance.loop = function(){
+	console.log("Im a map. Im a map. Im a map");
     }
 
     return instance;
@@ -232,7 +266,10 @@ function GridController(){
 		jstick.left  = true;
 	    }else if(event.keyCode == 68){
 		jstick.right = true;
+	    }else if(event.keyCode == 77){
+		jstick.mapKey = true;
 	    }
+					  
 	});
 	document.addEventListener('keyup', function(event){
 	    if(event.keyCode == 87){
@@ -243,6 +280,8 @@ function GridController(){
 		jstick.left  = false;
 	    }else if(event.keyCode == 68){
 		jstick.right = false;
+	    }else if(event.keyCode == 77){
+		jstick.mapKey = false;
 	    }
 	});
 	return entTable;
