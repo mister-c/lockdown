@@ -93,6 +93,7 @@ function SuperController(){
 
     instance.activeControllerLoop = instance.gc.loop;
     instance.controllerLoop = [instance.mc.loop, instance.gc.loop];
+    instance.isCleanSlate = false;
 
     // Controller calls the loop for GridController
     // so we can stop events from occuring on the grid at
@@ -103,6 +104,8 @@ function SuperController(){
 	// instance.gc.loop(lastFrameTime, entTable);
 	
 	instance.activeControllerLoop(lastFrameTime, entTable);
+
+	instance.isCleanSlate = false;
 	
 	if(jstick.mapKey == true){
 	    instance.activeControllerLoop = instance.controllerLoop.shift();
@@ -110,6 +113,7 @@ function SuperController(){
 
 	    // This is a vile vile hack
 	    jstick.mapKey = false;
+	    instance.isCleanSlate = true;
 	    // console.log("mapKey!");
 	    // console.log(instance.controllerLoop);
 	} 
@@ -144,8 +148,18 @@ function MapController(){
 
     instance.constructor = MapController;
 
+    instance.cleanSlate = function(bColor = "#000000"){
+	context.fillStyle = bColor;
+	context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
     instance.loop = function(){
 	console.log("Im a map. Im a map. Im a map");
+	if(sc.isCleanSlate == true){
+	    instance.cleanSlate();
+	    canvas.width  = 800;
+	    canvas.height = 600;
+	}
     }
 
     return instance;
@@ -172,6 +186,13 @@ function GridController(){
 	// time = (new Date()).getTime();
 	//console.log(Math.floor(Math.pow((time - lastFrameTime), -1) * 1000));
 
+	if(sc.isCleanSlate == true){
+	    canvas.height = NUM_ROW * GRID_Y_SPACING * 1.0;
+	    canvas.width  = NUM_COLUMN * GRID_X_SPACING * 1.0 + 
+		GRID_X_BUFFER;
+	    instance.drawDisplay();
+	}
+	
 	//Update game state
 	instance.update((time - lastFrameTime), entTable);
 	
