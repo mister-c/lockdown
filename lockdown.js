@@ -148,17 +148,61 @@ function MapController(){
 
     instance.constructor = MapController;
 
+    instance.fayPos = {};
+    instance.fayPos.x = -1;
+    instance.fayPos.y = -1;
+
     instance.cleanSlate = function(bColor = "#000000"){
 	context.fillStyle = bColor;
 	context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    instance.drawChar = function(charY, charX, character, fColor = "#ffffff", bColor = "#000000"){
+	var origContext;
+	
+	//origContext = context;
+	
+	context.textAlign = "center";
+	context.font = FONT + "px sans-serif";
+
+	context.fillStyle = bColor;
+	
+	//Draw the BKG
+	context.fillRect((charX * GRID_X_SPACING) + GRID_X_BUFFER,
+			 (charY * GRID_Y_SPACING) + GRID_X_BUFFER,
+			 GRID_X_SPACING - 1,
+			 GRID_Y_SPACING - 1);
+
+	context.fillStyle = fColor;
+
+	//Draw the CHAR
+	context.fillText(character, 
+			 (FONT_X_SPACING * charX) + FONT_X_BUFFER,
+			 (FONT_Y_SPACING * charY) + FONT_Y_BUFFER);
+	//context = origContext;
+    }
+    
+    instance.drawDisplay = function(){
+    	for(var y = 0; y < NUM_MAP_ROW; y++){
+    	    for(var x = 0; x < NUM_MAP_COLUMN; x++){
+    		instance.drawChar(y, x, mapBuffer[y][x]);
+    	    }
+    	}
+    }
+
     instance.loop = function(){
-	console.log("Im a map. Im a map. Im a map");
 	if(sc.isCleanSlate == true){
 	    instance.cleanSlate();
-	    canvas.width  = 800;
-	    canvas.height = 600;
+
+	    canvas.height = NUM_MAP_ROW * GRID_Y_SPACING * 1.0;
+	    canvas.width  = NUM_MAP_COLUMN * GRID_X_SPACING * 1.0 + 
+		GRID_X_BUFFER;
+
+	    // canvas.width  = 800;
+	    // canvas.height = 600;
+
+	    instance.drawDisplay();
+	    // instance.drawChar(0, 0, "F");
 	}
     }
 
@@ -332,6 +376,10 @@ function GridController(){
 	displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
 	instance.drawBkg(entTable);
 	entTable["Fay"][1].isMoving = true;
+
+	// Remove this later, since its a kludge
+	sc.mc.fayPos.y = entTable["Fay"][1].mapY;
+	sc.mc.fayPos.x = entTable["Fay"][1].mapX;
 
 	// console.log(Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()));
 	// console.log(Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()));
