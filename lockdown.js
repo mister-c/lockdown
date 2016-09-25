@@ -163,7 +163,7 @@ function MapController(){
 	//origContext = context;
 	
 	context.textAlign = "center";
-	context.font = FONT + "px sans-serif";
+	context.font      = FONT + "px sans-serif";
 
 	context.fillStyle = bColor;
 	
@@ -180,6 +180,10 @@ function MapController(){
 			 (FONT_X_SPACING * charX) + FONT_X_BUFFER,
 			 (FONT_Y_SPACING * charY) + FONT_Y_BUFFER);
 	//context = origContext;
+    }
+
+    instance.drawFayPos = function(){
+	instance.drawChar(instance.fayPos.y, instance.fayPos.x, "F");
     }
     
     instance.drawDisplay = function(){
@@ -202,6 +206,7 @@ function MapController(){
 	    // canvas.height = 600;
 
 	    instance.drawDisplay();
+	    instance.drawFayPos();
 	    // instance.drawChar(0, 0, "F");
 	}
     }
