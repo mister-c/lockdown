@@ -17,6 +17,12 @@ var FONT_Y_BUFFER  = Math.floor(FONT * 1.0);
 var NUM_MAP_ROW    = 40;
 var NUM_MAP_COLUMN = 80;
 
+// This value prevents you from accidentally jumping ahead
+// by one square every time you move from room to room
+var MAP_SWITCH_CUSHION = 0.55;
+
+// For coral algorithm...
+
 var SPLIT_PROB     = 0.1;
 
 var canvas  = document.getElementById("my_canvas");
@@ -152,6 +158,7 @@ function MapController(){
     instance.fayPos.x = -1;
     instance.fayPos.y = -1;
 
+    instance.scale = 0.7;
     instance.cleanSlate = function(bColor = "#000000"){
 	context.fillStyle = bColor;
 	context.fillRect(0, 0, canvas.width, canvas.height);
@@ -160,30 +167,30 @@ function MapController(){
     instance.drawChar = function(charY, charX, character, fColor = "#ffffff", bColor = "#000000"){
 	var origContext;
 	
-	//origContext = context;
+	origContext = context;
 	
 	context.textAlign = "center";
-	context.font      = FONT + "px sans-serif";
+	context.font      = (FONT * instance.scale) + "px sans-serif";
 
 	context.fillStyle = bColor;
 	
 	//Draw the BKG
-	context.fillRect((charX * GRID_X_SPACING) + GRID_X_BUFFER,
-			 (charY * GRID_Y_SPACING) + GRID_X_BUFFER,
-			 GRID_X_SPACING - 1,
-			 GRID_Y_SPACING - 1);
+	context.fillRect(((charX * GRID_X_SPACING * instance.scale) + GRID_X_BUFFER),
+			 ((charY * GRID_Y_SPACING * instance.scale) + GRID_X_BUFFER),
+			 (GRID_X_SPACING * instance.scale) - 1,
+			 (GRID_Y_SPACING * instance.scale) - 1);
 
 	context.fillStyle = fColor;
 
 	//Draw the CHAR
 	context.fillText(character, 
-			 (FONT_X_SPACING * charX) + FONT_X_BUFFER,
-			 (FONT_Y_SPACING * charY) + FONT_Y_BUFFER);
-	//context = origContext;
+			 (FONT_X_SPACING * charX * instance.scale) + FONT_X_BUFFER * instance.scale,
+			 (FONT_Y_SPACING * charY * instance.scale) + FONT_Y_BUFFER * instance.scale);
+	context = origContext;
     }
 
     instance.drawFayPos = function(){
-	instance.drawChar(instance.fayPos.y, instance.fayPos.x, "F");
+	instance.drawChar(instance.fayPos.y, instance.fayPos.x, "F", "#000000", "#ff0066");
     }
     
     instance.drawDisplay = function(){
@@ -198,8 +205,8 @@ function MapController(){
 	if(sc.isCleanSlate == true){
 	    instance.cleanSlate();
 
-	    canvas.height = NUM_MAP_ROW * GRID_Y_SPACING * 1.0;
-	    canvas.width  = NUM_MAP_COLUMN * GRID_X_SPACING * 1.0 + 
+	    canvas.height = NUM_MAP_ROW * GRID_Y_SPACING * instance.scale;
+	    canvas.width  = NUM_MAP_COLUMN * GRID_X_SPACING * instance.scale + 
 		GRID_X_BUFFER;
 
 	    // canvas.width  = 800;
@@ -406,7 +413,7 @@ function GridController(){
 	    entTable["Fay"][1].mapX++;
 	}else if (entTable["Fay"][0].gridX < 0){
 	    //Exit west
-	    entTable["Fay"][1].gridX = NUM_COLUMN;
+	    entTable["Fay"][1].gridX = NUM_COLUMN - MAP_SWITCH_CUSHION;
 	    entTable["Fay"][1].mapX--;
 	}else if (entTable["Fay"][0].gridY > NUM_ROW){
 	    //Exit south
@@ -414,7 +421,7 @@ function GridController(){
 	    entTable["Fay"][1].mapY++;
 	}else if (entTable["Fay"][0].gridY < 0){
 	    //Exit north
-	    entTable["Fay"][1].gridY = NUM_ROW;
+	    entTable["Fay"][1].gridY = NUM_ROW - MAP_SWITCH_CUSHION;
 	    entTable["Fay"][1].mapY--;
 	}
 
@@ -436,12 +443,19 @@ function GridController(){
 	tempArr = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)];
 	//gridPosTable["Fay"] = tempArr;
 
-	// entTable["Fay"][0].gridY = tempArr[0];
-	// entTable["Fay"][0].gridX = tempArr[1];
+	entTable["Fay"][0].gridY = tempArr[0];
+	entTable["Fay"][0].gridX = tempArr[1];
 	entTable["Fay"][1].gridY = tempArr[0];
 	entTable["Fay"][1].gridX = tempArr[1];
 
+	displayBuffer[entTable["Fay"][0].getGridY()][entTable["Fay"][0].getGridX()] = entTable["Fay"][0].sigil;
+
 	console.log("Fay moved to " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
+
+	console.log("Fays at " + entTable["Fay"][0].getGridY() + ", " + entTable["Fay"][0].getGridX());
+
+	instance.grid_delta_update_draw_hyper_drive_activate();
+	
     }
 
     instance.executeBehavior = function(entTable){
@@ -648,12 +662,13 @@ function GridController(){
 	    if(entTable[key][1].isMoving == true &&
 	       (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
 		Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
-	      ){
+	      ){		
 		//Set boolean so this function doesn't run again until the next position change
 		entTable[key][1].isMoving = false;
 		entTable[key][0].isMoving = false;
 
 		//Check which positions are in legal boundaries
+		//applies for both present Fay and future Fay
 		isInBound[0] = entTable[key][0].getGridY() >= 0 && entTable[key][0].getGridY() < NUM_ROW &&
 		    entTable[key][0].getGridX() >= 0 && entTable[key][0].getGridX() < NUM_COLUMN;
 		isInBound[1] = entTable[key][1].getGridY() >= 0 && entTable[key][1].getGridY() < NUM_ROW &&
@@ -714,7 +729,7 @@ function GridController(){
 	
 	instance.addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
 
-	if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY - 1][entTable["Fay"][1].mapX] == '#'){
+	if(entTable["Fay"][1].mapY - 1 >= 0 && mapBuffer[entTable["Fay"][1].mapY - 1][entTable["Fay"][1].mapX] == '#'){
 	    instance.addSheetTile(0, 4, 3, NUM_COLUMN - 4, " ");
 	    //Draw a north exit
 	}
@@ -722,11 +737,11 @@ function GridController(){
 	    instance.addSheetTile(NUM_ROW - 3, 4, NUM_ROW, NUM_COLUMN - 4, " ");
 	    //Draw a south exit
 	}
-	if(entTable["Fay"][1].mapY - 1 > 0 && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX - 1] == '#'){
+	if(entTable["Fay"][1].mapX - 1 >= 0 && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX - 1] == '#'){
 	    instance.addSheetTile(3, 0, NUM_ROW -3, NUM_COLUMN - 4, " ");
 	    //Draw a west exit
 	}
-	if(entTable["Fay"][1].mapY + 1 < NUM_MAP_COLUMN && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX + 1] == '#'){
+	if(entTable["Fay"][1].mapX + 1 < NUM_MAP_COLUMN && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX + 1] == '#'){
 	    instance.addSheetTile(3, NUM_COLUMN - 4, NUM_ROW - 3, NUM_COLUMN, " ");
 	    //Draw a east exit
 	}
