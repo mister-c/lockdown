@@ -54,3 +54,14 @@ Move Fay to the center of her current room
 
 --------------
 
+Cases:
+
+RIGHT
+12, 30 || change to 12, 0
+
+LEFT
+12, -1 || change to 12, 29
+
+UP
+
+DOWN

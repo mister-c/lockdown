@@ -19,6 +19,9 @@ var NUM_MAP_COLUMN = 80;
 
 // This value prevents you from accidentally jumping ahead
 // by one square every time you move from room to room
+//
+// Its an amount of distance thats arbitrarily added to
+// the players position when you change rooms
 var MAP_SWITCH_CUSHION = 0.55;
 
 // For coral algorithm...
@@ -662,10 +665,13 @@ function GridController(){
 	    if(entTable[key][1].isMoving == true &&
 	       (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
 		Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
-	      ){		
+	      ){
 		//Set boolean so this function doesn't run again until the next position change
 		entTable[key][1].isMoving = false;
 		entTable[key][0].isMoving = false;
+
+		console.log("updateEnt - Fay Position 0: " + entTable[key][0].getGridY() + ", " + entTable[key][0].getGridX());
+		console.log("updateEnt - Fay Position 1: " + entTable[key][1].getGridY() + ", " + entTable[key][1].getGridX());
 
 		//Check which positions are in legal boundaries
 		//applies for both present Fay and future Fay
@@ -675,9 +681,40 @@ function GridController(){
 		    entTable[key][1].getGridX() >= 0 && entTable[key][1].getGridX() < NUM_COLUMN;
 
 		//Detect collision
-		if(isInBound[1] && instance.checkCollide(entTable, key)){
+		if(isInBound[1] && instance.checkCollide(entTable, key, 1)){
 		    entTable[key][1].gridY = entTable[key][0].getGridY();
 		    entTable[key][1].gridX = entTable[key][0].getGridX();
+
+		    //Detect reverting across a room change
+		    // if(entTable[key][0].getGridX() < 0 || entTable[key][0].getGridX() >= NUM_COLUMN ||
+		    //    entTable[key][0].getGridY() < 0 || entTable[key][0].getGridY() >= NUM_ROW){
+		    if(!isInBound[0]){
+			if(entTable[key][0].getGridY() >= NUM_ROW){
+			    entTable[key][0].gridY = 0;
+			    entTable[key][0].gridX = Math.floor(NUM_COLUMN / 2.0);
+			} else if(entTable[key][0].getGridY() < 0){
+			    entTable[key][0].gridY = NUM_ROW - 1;
+			    entTable[key][0].gridX = Math.floor(NUM_COLUMN / 2.0);
+			} else if(entTable[key][0].getGridX() >= NUM_COLUMN){
+			    entTable[key][0].gridX = 0;
+			    entTable[key][0].gridY = Math.floor(NUM_ROW / 2.0);
+			} else if(entTable[key][0].getGridX() < 0){
+			    entTable[key][0].gridX = NUM_COLUMN - 1;
+			    entTable[key][0].gridY = Math.floor(NUM_ROW / 2.0);
+			}
+			// entTable[key][0].gridX = Math.abs(entTable[key][0].gridX);
+			// entTable[key][0].gridY = Math.abs(entTable[key][0].gridY);
+			displayBuffer[entTable[key][0].getGridY()][entTable[key][0].getGridX()] = entTable[key][0].sigil;
+
+			entTable[key][1].gridY = entTable[key][0].getGridY();
+			entTable[key][1].gridX = entTable[key][0].getGridX();
+			
+			console.log("oh shit!");
+			
+			console.log("oh shit - Fay Position 0: " + entTable[key][0].getGridY() + ", " + entTable[key][0].getGridX());
+			console.log("oh shit - Fay Position 1: " + entTable[key][1].getGridY() + ", " + entTable[key][1].getGridX());
+
+		    }
 		    continue;
 		}
 		
@@ -706,19 +743,27 @@ function GridController(){
 	}
     }
 
-    instance.checkCollide = function(entTable, entName){
+    instance.checkCollide = function(entTable, entName, fayState){
 	for(var key in entTable){
-	    if(displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] != " "){
-		console.log("Collided with " + displayBuffer[entTable[entName][1].getGridY()][entTable[entName][1].getGridX()] + "!!");
+	    if(displayBuffer[entTable[entName][fayState].getGridY()][entTable[entName][fayState].getGridX()] != " "){
+		console.log("Collided with " + displayBuffer[entTable[entName][1].getGridY()][entTable[entName][fayState].getGridX()] + "!!");
 		return true;
 	    }
 	    
-	    if(entTable[key][1].getGridY() == entTable[entName][1].getGridY() && entTable[key][1].getGridX() == entTable[entName][1].getGridX() && key != entName){
+	    if(entTable[key][fayState].getGridY() == entTable[entName][fayState].getGridY() && entTable[key][fayState].getGridX() == entTable[entName][fayState].getGridX() && key != entName){
 		console.log("Collided with " + key + "!!!");
 		return true;
 	    }
 	}
 	return false;
+    }
+
+    instance.checkStuck = function(entTable, entName, fayState){
+	var stuck;
+
+	stuck = true;
+
+	// if(displayBuffer[entTable[entName]][fayState])
     }
 
     //use a FIFO queue
