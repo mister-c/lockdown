@@ -766,6 +766,50 @@ function GridController(){
 	// if(displayBuffer[entTable[entName]][fayState])
     }
 
+    // Returns true if the exit should be drawn
+    instance.checkWall = function(y, x, dir){
+	if(      dir == "N" && (y - 1) >= 0         && mapBuffer[y - 1][x] == '#'){
+	    return true;
+	}else if(dir == "S" && (y + 1) < NUM_MAP_ROW    && mapBuffer[y + 1][x] == '#'){
+	    return true;
+	}else if(dir == "W" && (x - 1) >= 0         && mapBuffer[y][x - 1] == '#'){
+	    return true;
+	}else if(dir == "E" && (x + 1) < NUM_MAP_COLUMN && mapBuffer[y][x + 1] == '#'){
+	    return true;
+	}
+	return false;
+    }
+
+    // Return true if a corner should be erased
+    instance.checkCorner = function(y, x, dir){
+	if(dir == "NE"){
+	    if((y - 1) >= 0 && mapBuffer[y-1][x] == "#" &&
+	       (x + 1) < NUM_MAP_COLUMN && mapBuffer[y][x+1] == "#" &&
+	       mapBuffer[y-1][x+1] == "#"){
+		return false;
+	    } 
+	} else if(dir == "SE"){
+	    if((y + 1) < NUM_MAP_ROW && mapBuffer[y+1][x] == "#" &&
+	       (x + 1) < NUM_MAP_COLUMN && mapBuffer[y][x+1] == "#" &&
+	       mapBuffer[y+1][x+1] == "#"){
+		return false;
+	    } 
+	} else if(dir == "NW"){
+	    if((y - 1) >= 0 && mapBuffer[y-1][x] == "#" &&
+	       (x - 1) >= 0 && mapBuffer[y][x-1] == "#" &&
+	       mapBuffer[y-1][x-1] == "#"){
+		return false;
+	    } 
+	} else if(dir == "SW"){
+	    if((y + 1) < NUM_MAP_ROW && mapBuffer[y+1][x] == "#" &&
+	       (x - 1) >= 0 && mapBuffer[y][x-1] == "#" &&
+	       mapBuffer[y+1][x-1] == "#"){
+		return false;
+	    } 
+	}
+	return true;
+    }
+
     //use a FIFO queue
     //use queue.shift() to dequeue an item in FIFO order
     //a[0] is the top of the queue
@@ -774,21 +818,34 @@ function GridController(){
 	
 	instance.addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
 
-	if(entTable["Fay"][1].mapY - 1 >= 0 && mapBuffer[entTable["Fay"][1].mapY - 1][entTable["Fay"][1].mapX] == '#'){
+	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "N")){
 	    instance.addSheetTile(0, 4, 3, NUM_COLUMN - 4, " ");
 	    //Draw a north exit
 	}
-	if(entTable["Fay"][1].mapY + 1 < NUM_MAP_ROW && mapBuffer[entTable["Fay"][1].mapY + 1][entTable["Fay"][1].mapX] == '#'){
+	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "S")){
 	    instance.addSheetTile(NUM_ROW - 3, 4, NUM_ROW, NUM_COLUMN - 4, " ");
 	    //Draw a south exit
 	}
-	if(entTable["Fay"][1].mapX - 1 >= 0 && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX - 1] == '#'){
+	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "W")){
 	    instance.addSheetTile(3, 0, NUM_ROW -3, NUM_COLUMN - 4, " ");
 	    //Draw a west exit
 	}
-	if(entTable["Fay"][1].mapX + 1 < NUM_MAP_COLUMN && mapBuffer[entTable["Fay"][1].mapY][entTable["Fay"][1].mapX + 1] == '#'){
+	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "E")){
 	    instance.addSheetTile(3, NUM_COLUMN - 4, NUM_ROW - 3, NUM_COLUMN, " ");
 	    //Draw a east exit
+	}
+
+	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "NE")){
+	    console.log("Erasing NE corner...");
+	}
+	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "SE")){
+	    console.log("Erasing SE corner...");
+	}
+	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "SW")){
+	    console.log("Erasing SW corner...");
+	}
+	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "NW")){
+	    console.log("Erasing NW corner...");
 	}
     }
 

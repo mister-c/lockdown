@@ -54,3 +54,11 @@ Move Fay to the center of her current room
 
 --------------
 
+Create a function
+
+Given a set of cell coordinates and a direction
+Return T if there is a solid wall or false if there is not
+
+Example 10,10 North
+
+Refactor to adjust for this
