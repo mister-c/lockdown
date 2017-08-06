@@ -14,8 +14,13 @@ var GRID_Y_BUFFER  = Math.floor(FONT * 1.0);
 var FONT_X_BUFFER  = Math.floor(FONT * 0.6);
 var FONT_Y_BUFFER  = Math.floor(FONT * 1.0);
 
-var NUM_MAP_ROW    = 40;
-var NUM_MAP_COLUMN = 80;
+// var NUM_MAP_ROW    = 40;
+// var NUM_MAP_COLUMN = 80;
+var NUM_MAP_ROW    = 15;
+var NUM_MAP_COLUMN = 30;
+
+var WALL_THICKNESS_Y = 3;
+var WALL_THICKNESS_X = 4;
 
 // This value prevents you from accidentally jumping ahead
 // by one square every time you move from room to room
@@ -37,10 +42,12 @@ var displayBuffer;
 var mapBuffer;
 var mapRandArray;
 
+var debugGlobal;
+
 //And so it begins...
 //An endless flood of unneeded classes
 //You suck
-class Joystick {
+class Joystick{
     constructor(){
 	this.up    = false;
 	this.down  = false;
@@ -55,7 +62,7 @@ class Joystick {
 //This should allow us to make a SIMPLE
 //struct with no methods that contains a series of 
 //values to represent state and behaviors...
-class Entity {
+class Entity{
     constructor(name){
 	this.name  = name;
 	this.mapY  = -1;
@@ -115,6 +122,24 @@ function SuperController(){
 	instance.activeControllerLoop(lastFrameTime, entTable);
 
 	instance.isCleanSlate = false;
+
+	debugGlobal.frameCount++;
+
+	time = lastFrameTime;
+
+	if(debugGlobal.frameCount > 500){
+	    time = new Date().getTime()
+;
+	    // console.log("FPS: " + Math.floor(500.0 / Math.pow((time - lastFrameTime), -1) * 1000));
+	    debugGlobal.fps = Math.floor((500.0 / ((time - lastFrameTime) / 1000.0)));
+	    if(debugGlobal.fps < 10){
+		debugGlobal.fps = "0" + debugGlobal.fps;
+	    }else if(debugGlobal.fps > 100){
+		debugGlobal.fps = "99";
+	    }
+	    console.log("FPS: " + debugGlobal.fps);
+	    debugGlobal.frameCount = 0;
+	}
 	
 	if(jstick.mapKey == true){
 	    instance.activeControllerLoop = instance.controllerLoop.shift();
@@ -125,7 +150,7 @@ function SuperController(){
 	    instance.isCleanSlate = true;
 	    // console.log("mapKey!");
 	    // console.log(instance.controllerLoop);
-	} 
+	}
 	
 	requestAnimFrame(function(){
 	    instance.loop(time, entTable);
@@ -140,7 +165,6 @@ function SuperController(){
 	instance.loop(new Date().getTime(), entTable);
 	// instance.loop
     }
-
     return instance;
 }
 
@@ -327,7 +351,6 @@ function GridController(){
 
 	console.log("Fay was placed at map location..." + 
 		    entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
-	
 
 	//Init asciidisplay stuff
 	initCanvas();
@@ -383,7 +406,7 @@ function GridController(){
 	if((entTable["Fay"][0].mapY == -1 && entTable["Fay"][0].mapX == -1) ||
 	   (entTable["Fay"][1].mapY == -1 && entTable["Fay"][1].mapX == -1)){
 	    instance.switchRandomRoom(entTable);
-	} else {
+	}else{
 	    instance.switchAdjRoom(entTable);
 	}
 
@@ -414,15 +437,15 @@ function GridController(){
 	    //Exit east
 	    entTable["Fay"][1].gridX = 0;
 	    entTable["Fay"][1].mapX++;
-	}else if (entTable["Fay"][0].gridX < 0){
+	}else if(entTable["Fay"][0].gridX < 0){
 	    //Exit west
 	    entTable["Fay"][1].gridX = NUM_COLUMN - MAP_SWITCH_CUSHION;
 	    entTable["Fay"][1].mapX--;
-	}else if (entTable["Fay"][0].gridY > NUM_ROW){
+	}else if(entTable["Fay"][0].gridY > NUM_ROW){
 	    //Exit south
 	    entTable["Fay"][1].gridY = 0;
 	    entTable["Fay"][1].mapY++;
-	}else if (entTable["Fay"][0].gridY < 0){
+	}else if(entTable["Fay"][0].gridY < 0){
 	    //Exit north
 	    entTable["Fay"][1].gridY = NUM_ROW - MAP_SWITCH_CUSHION;
 	    entTable["Fay"][1].mapY--;
@@ -463,7 +486,7 @@ function GridController(){
 
     instance.executeBehavior = function(entTable){
 	//TODO refactor this to account for arrays...
-	for (var key in entTable){
+	for(var key in entTable){
 	    //I think element [1] is supposed to be the
 	    //present element...
 	    if(entTable[key][0].behavior){
@@ -507,6 +530,8 @@ function GridController(){
 		}
 	    }
 	}
+	sc.gc.drawChar(0, 0, debugGlobal.fps.toString()[0]);
+	sc.gc.drawChar(0, 1, debugGlobal.fps.toString()[1]);
     }
 
     instance.drawGridBuffer = function(){
@@ -670,9 +695,6 @@ function GridController(){
 		entTable[key][1].isMoving = false;
 		entTable[key][0].isMoving = false;
 
-		console.log("updateEnt - Fay Position 0: " + entTable[key][0].getGridY() + ", " + entTable[key][0].getGridX());
-		console.log("updateEnt - Fay Position 1: " + entTable[key][1].getGridY() + ", " + entTable[key][1].getGridX());
-
 		//Check which positions are in legal boundaries
 		//applies for both present Fay and future Fay
 		isInBound[0] = entTable[key][0].getGridY() >= 0 && entTable[key][0].getGridY() < NUM_ROW &&
@@ -743,14 +765,38 @@ function GridController(){
 	}
     }
 
+    // fayState refers to if this is "present" Fay or "future" Fay
+    // "future" Fay refers to the frame that is about to be rendered
+    // We keep track of Fay's position in the future frame while performing
+    // checks.
+    // We keep track of Fay's position in the present frame, so if Fay needs
+    // to move relative to her previous position, we have a reference
+    // ie if we deterine that Fay is being pushed we might want to move her
+    // backward by 1 tile RELATIVE to her present position
     instance.checkCollide = function(entTable, entName, fayState){
 	for(var key in entTable){
 	    if(displayBuffer[entTable[entName][fayState].getGridY()][entTable[entName][fayState].getGridX()] != " "){
-		console.log("Collided with " + displayBuffer[entTable[entName][1].getGridY()][entTable[entName][fayState].getGridX()] + "!!");
+		
+		// Display debug message to indicate there was a collision detected
+		// The debug message displays the sigil that represents the tile you collided with
+		
+		// We get the sigil from the display buffer. There are 2 values put into the display buffer
+		// array to get the sigil
+		// 1 - entTable[entName][fayState].getGridY()]
+		// 2 - entTable[entName][fayState].getGridX()]
+		console.log("Collided with " + displayBuffer[
+		    entTable[entName][fayState].getGridY()][
+			entTable[entName][fayState].getGridX()] + "!!");
 		return true;
 	    }
 	    
-	    if(entTable[key][fayState].getGridY() == entTable[entName][fayState].getGridY() && entTable[key][fayState].getGridX() == entTable[entName][fayState].getGridX() && key != entName){
+	    if(entTable[key][fayState].getGridY() == entTable[entName][fayState].getGridY() &&
+	       entTable[key][fayState].getGridX() == entTable[entName][fayState].getGridX() &&
+	       key != entName){
+
+		// Display debug message to indicate there was a collision detected
+		// The debug message displays the sigil that represents the entity you collided with
+		
 		console.log("Collided with " + key + "!!!");
 		return true;
 	    }
@@ -768,11 +814,11 @@ function GridController(){
 
     // Returns true if the exit should be drawn
     instance.checkWall = function(y, x, dir){
-	if(      dir == "N" && (y - 1) >= 0         && mapBuffer[y - 1][x] == '#'){
+	if(      dir == "N" && (y - 1) >= 0             && mapBuffer[y - 1][x] == '#'){
 	    return true;
 	}else if(dir == "S" && (y + 1) < NUM_MAP_ROW    && mapBuffer[y + 1][x] == '#'){
 	    return true;
-	}else if(dir == "W" && (x - 1) >= 0         && mapBuffer[y][x - 1] == '#'){
+	}else if(dir == "W" && (x - 1) >= 0             && mapBuffer[y][x - 1] == '#'){
 	    return true;
 	}else if(dir == "E" && (x + 1) < NUM_MAP_COLUMN && mapBuffer[y][x + 1] == '#'){
 	    return true;
@@ -816,36 +862,43 @@ function GridController(){
     instance.drawBkg = function(entTable){
 	console.log("Drawing... " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
 	
-	instance.addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
+	instance.addSheetTile(WALL_THICKNESS_Y, WALL_THICKNESS_X, NUM_ROW - WALL_THICKNESS_Y, NUM_COLUMN - WALL_THICKNESS_X, " ");
+	// instance.addSheetTile(3, 4, NUM_ROW - 3, NUM_COLUMN - 4, " ");
+
 
 	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "N")){
-	    instance.addSheetTile(0, 4, 3, NUM_COLUMN - 4, " ");
+	    instance.addSheetTile(0, WALL_THICKNESS_X, WALL_THICKNESS_Y, NUM_COLUMN - WALL_THICKNESS_X, " ");
 	    //Draw a north exit
 	}
 	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "S")){
-	    instance.addSheetTile(NUM_ROW - 3, 4, NUM_ROW, NUM_COLUMN - 4, " ");
+	    instance.addSheetTile(NUM_ROW - WALL_THICKNESS_Y, WALL_THICKNESS_X, NUM_ROW, NUM_COLUMN - WALL_THICKNESS_X, " ");
 	    //Draw a south exit
 	}
 	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "W")){
-	    instance.addSheetTile(3, 0, NUM_ROW -3, NUM_COLUMN - 4, " ");
+	    instance.addSheetTile(WALL_THICKNESS_Y, 0, NUM_ROW - WALL_THICKNESS_Y, NUM_COLUMN - WALL_THICKNESS_X, " ");
 	    //Draw a west exit
 	}
 	if(instance.checkWall(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "E")){
-	    instance.addSheetTile(3, NUM_COLUMN - 4, NUM_ROW - 3, NUM_COLUMN, " ");
+	    instance.addSheetTile(WALL_THICKNESS_Y, NUM_COLUMN - WALL_THICKNESS_X, NUM_ROW - WALL_THICKNESS_Y, NUM_COLUMN, " ");
 	    //Draw a east exit
 	}
 
+	// Erase corners if needed
 	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "NE")){
-	    console.log("Erasing NE corner...");
+	    // console.log("Erasing NE corner...");
+	    instance.addSheetTile(0, NUM_COLUMN - WALL_THICKNESS_X, WALL_THICKNESS_Y, NUM_COLUMN, " ");
 	}
 	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "SE")){
-	    console.log("Erasing SE corner...");
+	    // console.log("Erasing SE corner...");
+	    instance.addSheetTile(NUM_ROW - WALL_THICKNESS_Y, NUM_COLUMN - WALL_THICKNESS_X, NUM_ROW, NUM_COLUMN, " ");
 	}
 	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "SW")){
-	    console.log("Erasing SW corner...");
+	    // console.log("Erasing SW corner...");
+	    instance.addSheetTile(NUM_ROW - WALL_THICKNESS_Y, 0, NUM_ROW, WALL_THICKNESS_X, " ");
 	}
 	if(!instance.checkCorner(entTable["Fay"][1].mapY, entTable["Fay"][1].mapX, "NW")){
-	    console.log("Erasing NW corner...");
+	    // console.log("Erasing NW corner...");
+	    instance.addSheetTile(0, 0, WALL_THICKNESS_Y, WALL_THICKNESS_X, " ");
 	}
     }
 
@@ -988,5 +1041,8 @@ window.requestAnimFrame = (function(callback){
 
 var sc = new SuperController();
 
+debugGlobal = {};
+debugGlobal.frameCount = 0;
+debugGlobal.fps = "00";
 sc.gcInit();
 
