@@ -74,7 +74,7 @@ class Entity{
 	this.gridArrY = [-1, -1, -1];
 	this.gridArrX = [-1, -1, -1];
 	this.isMoving = false;
-	this.sigil = "F";
+	this.sigil = "%";
     }
 
     defineBehavior(b){
@@ -162,6 +162,13 @@ function SuperController(){
 	var entTable;
 	
 	entTable = instance.gc.init();
+
+	// This debug statement is to add stuff to the inital
+	// game state for the purpose of testing
+	if(debugGlobal.isDebugMode){
+	    // For now do nothing
+	}
+	
 	instance.loop(new Date().getTime(), entTable);
 	// instance.loop
     }
@@ -343,6 +350,7 @@ function GridController(){
 	for(var i=0; i<2; i++){
 	    entTable["Fay"][i] = {};
 	    entTable["Fay"][i] = new Entity("Fay");
+	    entTable["Fay"][i].sigil = "F";
 	    entTable["Fay"][i].defineBehavior([instance.walkBehavior]);
 	}
 	//entTable["Fay"][0] = new Entity("Fay");
@@ -358,7 +366,23 @@ function GridController(){
 	displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
 
 	//Get set up in the inital room
-	instance.switchRoom(entTable);
+	instance.switchRoom(entTable, "Fay");
+
+	// This debug statement is to add stuff to the inital
+	// game state for the purpose of testing
+	if(debugGlobal.isDebugMode){
+	    entTable["TestBox0"] = [];
+	    for(var i=0; i<2; i++){
+		entTable["TestBox0"][i] = {};
+		entTable["TestBox0"][i] = new Entity("TestBox0");
+		entTable["TestBox0"][i].mapY = entTable["Fay"][1].mapY;
+		entTable["TestBox0"][i].mapX = entTable["Fay"][1].mapX;
+		entTable["TestBox0"][i].gridY = 10;
+		entTable["TestBox0"][i].gridX = 20;
+	    }
+	    instance.entTable = entTable;
+	    instance.switchRoom(entTable, "TestBox0");
+	}
 
 	//Update the grid buffer and whatever
 	//drawGridBuffer();
@@ -399,13 +423,13 @@ function GridController(){
 
     //TO DO
     //Make sure this method works for entities that are not Fay
-    instance.switchRoom = function(entTable){
+    instance.switchRoom = function(entTable, key){
 	var tempArr;
 
 	console.log("Called switchRoom()");
-	if((entTable["Fay"][0].mapY == -1 && entTable["Fay"][0].mapX == -1) ||
-	   (entTable["Fay"][1].mapY == -1 && entTable["Fay"][1].mapX == -1)){
-	    instance.switchRandomRoom(entTable);
+	if((entTable[key][0].mapY == -1 && entTable[key][0].mapX == -1) ||
+	   (entTable[key][1].mapY == -1 && entTable[key][1].mapX == -1)){
+	    instance.switchRandomRoom(entTable, key);
 	}else{
 	    instance.switchAdjRoom(entTable);
 	}
@@ -413,11 +437,11 @@ function GridController(){
 	//Draw the background
 	displayBuffer = init2dArray(NUM_ROW, NUM_COLUMN, "%");
 	instance.drawBkg(entTable);
-	entTable["Fay"][1].isMoving = true;
+	entTable[key][1].isMoving = true;
 
 	// Remove this later, since its a kludge
-	sc.mc.fayPos.y = entTable["Fay"][1].mapY;
-	sc.mc.fayPos.x = entTable["Fay"][1].mapX;
+	sc.mc.fayPos.y = entTable[key][1].mapY;
+	sc.mc.fayPos.x = entTable[key][1].mapX;
 
 	// console.log(Math.abs(entTable["Fay"][1].getGridY() - entTable["Fay"][0].getGridY()));
 	// console.log(Math.abs(entTable["Fay"][1].getGridX() - entTable["Fay"][0].getGridX()));
@@ -455,30 +479,31 @@ function GridController(){
 		    "... to " + entTable["Fay"][1].mapY + ", " + entTable["Fay"][1].mapX);
     }
 
-    instance.switchRandomRoom = function(entTable){
+    instance.switchRandomRoom = function(entTable, key, dest = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)]){
 	//Pick a random spot on the game map
-	tempArr = mapRandArray[Math.floor(Math.random(mapRandArray.length))];
+	tempArr0 = mapRandArray[Math.floor(Math.random(mapRandArray.length))];
 	//mapPosTable["Fay"] = tempArr;
 
-	entTable["Fay"][0].mapY = tempArr[0];
-	entTable["Fay"][0].mapX = tempArr[1];
-	entTable["Fay"][1].mapY = tempArr[0];
-	entTable["Fay"][1].mapX = tempArr[1];
+	entTable[key][0].mapY = tempArr0[0];
+	entTable[key][0].mapX = tempArr0[1];
+	entTable[key][1].mapY = tempArr0[0];
+	entTable[key][1].mapX = tempArr0[1];
 	
 	//Pick the center spot on the game grid
-	tempArr = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)];
-	//gridPosTable["Fay"] = tempArr;
+	// tempArr = [Math.floor(NUM_ROW / 2.0), Math.floor(NUM_COLUMN / 2.0)];
+	tempArr1 = dest;
+	//gridPosTable[key] = tempArr;
 
-	entTable["Fay"][0].gridY = tempArr[0];
-	entTable["Fay"][0].gridX = tempArr[1];
-	entTable["Fay"][1].gridY = tempArr[0];
-	entTable["Fay"][1].gridX = tempArr[1];
+	entTable[key][0].gridY = tempArr1[0];
+	entTable[key][0].gridX = tempArr1[1];
+	entTable[key][1].gridY = tempArr1[0];
+	entTable[key][1].gridX = tempArr1[1];
 
-	displayBuffer[entTable["Fay"][0].getGridY()][entTable["Fay"][0].getGridX()] = entTable["Fay"][0].sigil;
+	displayBuffer[entTable[key][0].getGridY()][entTable[key][0].getGridX()] = entTable[key][0].sigil;
 
-	console.log("Fay moved to " + entTable["Fay"][0].mapY + ", " + entTable["Fay"][0].mapX);
+	console.log(key + " moved to " + entTable[key][0].mapY + ", " + entTable[key][0].mapX);
 
-	console.log("Fays at " + entTable["Fay"][0].getGridY() + ", " + entTable["Fay"][0].getGridX());
+	console.log(key + " at " + entTable[key][0].getGridY() + ", " + entTable[key][0].getGridX());
 
 	instance.grid_delta_update_draw_hyper_drive_activate();
 	
@@ -530,8 +555,10 @@ function GridController(){
 		}
 	    }
 	}
-	sc.gc.drawChar(0, 0, debugGlobal.fps.toString()[0]);
-	sc.gc.drawChar(0, 1, debugGlobal.fps.toString()[1]);
+	if(debugGlobal.isDebugMode){
+	    sc.gc.drawChar(0, 0, debugGlobal.fps.toString()[0]);
+	    sc.gc.drawChar(0, 1, debugGlobal.fps.toString()[1]);
+	}
     }
 
     instance.drawGridBuffer = function(){
@@ -683,10 +710,17 @@ function GridController(){
 
     //Should position 0 be the POTENTIAL new coordinates or the current coordinates??
     instance.updateEnt = function(entTable){
-	var isInBound = [false, false];
+	var isInBound;
+	
+	// isInBound = [false, false];
 	
 	for(var key in entTable){
 
+	    isInBound = [false, false];
+	    
+	    // Only perform update operations if Fays future cell and her present cell
+	    // are not the same.
+	    // We can check if those cells are the same with subtraction
 	    if(entTable[key][1].isMoving == true &&
 	       (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
 		Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
@@ -759,7 +793,7 @@ function GridController(){
 
 		//Room switch
 		if(!(isInBound[1])){
-		    sc.gc.switchRoom(entTable);
+		    sc.gc.switchRoom(entTable, key);
 		}
 	    }
 	}
@@ -1044,5 +1078,6 @@ var sc = new SuperController();
 debugGlobal = {};
 debugGlobal.frameCount = 0;
 debugGlobal.fps = "00";
+debugGlobal.isDebugMode = true;
 sc.gcInit();
 
