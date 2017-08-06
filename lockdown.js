@@ -837,9 +837,11 @@ function GridController(){
 		return true;
 	    }
 	    
-	    if(entTable[key][fayState].getGridY() == entTable[entName][fayState].getGridY() &&
-	       entTable[key][fayState].getGridX() == entTable[entName][fayState].getGridX() &&
-	       key != entName){
+	    if( entTable[key][fayState].mapY == entTable[entName][fayState].mapY &&
+		entTable[key][fayState].mapX == entTable[entName][fayState].mapX &&
+		entTable[key][fayState].getGridY() == entTable[entName][fayState].getGridY() &&
+		entTable[key][fayState].getGridX() == entTable[entName][fayState].getGridX() &&
+		key != entName){
 
 		// Display debug message to indicate there was a collision detected
 		// The debug message displays the sigil that represents the entity you collided with
@@ -969,6 +971,38 @@ function GridController(){
 	}
     }
 
+
+    // TODO: Update these 2 functions so that we can create sheets
+    // of many different kinds of entities not just Boxes
+    instance.addSheetEnt = function(map_y, map_x,
+				    start_y, start_x,
+				    end_y, end_x){
+	for(var i = start_x; i < end_x; i++){
+	    instance.addMultipleEnt(map_y, map_x,
+				    start_y, i, end_y, i, tile);
+	}
+    }
+    
+    instance.addMultipleEnt = function(map_y, map_x,
+				       start_y, start_x,
+				       end_y, end_x){
+	var key;
+	
+	if(start_y == end_y && start_x <= end_x){
+	    for(var i = start_x; i < end_x; i++){
+		key = "Box_m" + map_y + "." + map_x + "_g";
+		key += start_y + "." + i;
+	    }
+	}else if(start_x == end_x && start_y <= end_y){
+	    for(var i = start_y; i < end_y; i++){
+		key = "Box_m" + map_y + "." + map_x + "_g";
+		key += i + "." + start_x;
+	    }
+	}else{
+	    throw new Error("addMultipleEnt() invalid coordinates");
+	}
+    }
+    
     instance.walkBehavior = {
 	execute: function(ent){
 	    if(jstick.up == true){
