@@ -439,6 +439,15 @@ function GridController(){
 	instance.drawBkg(entTable);
 	entTable[key][1].isMoving = true;
 
+	// Check for entities in the same room as you and
+	// update them
+	for(var e in entTable){
+	    if(entTable[e][1].mapX == entTable[key][1].mapX &&
+	       entTable[e][1].mapY == entTable[key][1].mapY){
+		entTable[e][1].isMoving = true;
+	    }
+	}
+
 	// Remove this later, since its a kludge
 	sc.mc.fayPos.y = entTable[key][1].mapY;
 	sc.mc.fayPos.x = entTable[key][1].mapX;
@@ -721,9 +730,13 @@ function GridController(){
 	    // Only perform update operations if Fays future cell and her present cell
 	    // are not the same.
 	    // We can check if those cells are the same with subtraction
+	    // if(entTable[key][1].isMoving == true &&
+	    //    (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
+	    // 	Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
+	    //   ){
 	    if(entTable[key][1].isMoving == true &&
-	       (Math.abs(entTable[key][1].getGridY() - entTable[key][0].getGridY()) > 0 ||
-		Math.abs(entTable[key][1].getGridX() - entTable[key][0].getGridX()) > 0)
+	       (entTable[key][1].getGridY() != entTable[key][0].getGridY() > 0 ||
+		entTable[key][1].getGridX() != entTable[key][0].getGridX() > 0)
 	      ){
 		//Set boolean so this function doesn't run again until the next position change
 		entTable[key][1].isMoving = false;
