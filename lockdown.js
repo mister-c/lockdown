@@ -371,17 +371,26 @@ function GridController(){
 	// This debug statement is to add stuff to the inital
 	// game state for the purpose of testing
 	if(debugGlobal.isDebugMode){
-	    entTable["TestBox0"] = [];
-	    for(var i=0; i<2; i++){
-		entTable["TestBox0"][i] = {};
-		entTable["TestBox0"][i] = new Entity("TestBox0");
-		entTable["TestBox0"][i].mapY = entTable["Fay"][1].mapY;
-		entTable["TestBox0"][i].mapX = entTable["Fay"][1].mapX;
-		entTable["TestBox0"][i].gridY = 10;
-		entTable["TestBox0"][i].gridX = 20;
-	    }
+	    // entTable["TestBox0"] = [];
+	    // for(var i=0; i<2; i++){
+	    // 	entTable["TestBox0"][i] = {};
+	    // 	entTable["TestBox0"][i] = new Entity("TestBox0");
+	    // 	entTable["TestBox0"][i].mapY = entTable["Fay"][1].mapY;
+	    // 	entTable["TestBox0"][i].mapX = entTable["Fay"][1].mapX;
+	    // 	entTable["TestBox0"][i].gridY = 10;
+	    // 	entTable["TestBox0"][i].gridX = 20;
+	    // }
+
+	    // instance.addMultipleEnt(entTable["Fay"][1].mapY,
+	    // 			    entTable["Fay"][1].mapX,
+	    // 			    10, 20, 10, 23, entTable);
+
+	    instance.addSheetEnt(entTable["Fay"][1].mapY,
+				 entTable["Fay"][1].mapX,
+				 10, 20, 12, 22, entTable);
+	    
 	    instance.entTable = entTable;
-	    instance.switchRoom(entTable, "TestBox0");
+	    // instance.switchRoom(entTable, "TestBox0");
 	}
 
 	//Update the grid buffer and whatever
@@ -976,27 +985,50 @@ function GridController(){
     // of many different kinds of entities not just Boxes
     instance.addSheetEnt = function(map_y, map_x,
 				    start_y, start_x,
-				    end_y, end_x){
+				    end_y, end_x, entTable){
 	for(var i = start_x; i < end_x; i++){
 	    instance.addMultipleEnt(map_y, map_x,
-				    start_y, i, end_y, i, tile);
+				    start_y, i,
+				    end_y, i, entTable);
 	}
     }
     
     instance.addMultipleEnt = function(map_y, map_x,
 				       start_y, start_x,
-				       end_y, end_x){
+				       end_y, end_x, entTable){
 	var key;
 	
 	if(start_y == end_y && start_x <= end_x){
 	    for(var i = start_x; i < end_x; i++){
 		key = "Box_m" + map_y + "." + map_x + "_g";
 		key += start_y + "." + i;
+		entTable[key] = [];
+		for(var j=0; j<2; j++){
+		    entTable[key][j] = {};
+		    entTable[key][j] = new Entity(key);
+		    // entTable[key][i].sigil = "F";
+		    entTable[key][j].mapY = map_y;
+		    entTable[key][j].mapX = map_x;
+		    entTable[key][j].gridY = start_y;
+		    entTable[key][j].gridX = i;
+		}
+		instance.switchRoom(entTable, key);
 	    }
 	}else if(start_x == end_x && start_y <= end_y){
 	    for(var i = start_y; i < end_y; i++){
 		key = "Box_m" + map_y + "." + map_x + "_g";
 		key += i + "." + start_x;
+		entTable[key] = [];
+		for(var j=0; j<2; j++){
+		    entTable[key][j] = {};
+		    entTable[key][j] = new Entity(key);
+		    // entTable[key][i].sigil = "F";
+		    entTable[key][j].mapY = map_y;
+		    entTable[key][j].mapX = map_x;
+		    entTable[key][j].gridY = i;
+		    entTable[key][j].gridX = start_x;
+		}
+		instance.switchRoom(entTable, key);
 	    }
 	}else{
 	    throw new Error("addMultipleEnt() invalid coordinates");
@@ -1112,13 +1144,17 @@ window.requestAnimFrame = (function(callback){
     //Try out all the different animation
     //functions and see which on is compatible
     //with your browser
-    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame || function(callback){ window.setTimeout(callback, 1000/60); };
+    return window.requestAnimationFrame ||
+	window.webkitRequestAnimationFrame ||
+	window.msRequestAnimationFrame ||
+	function(callback){ window.setTimeout(callback, 1000/60);
+			  };
 })();
 
 
 
 
-// Start up controller
+// Rev up that SuperController....
 
 var sc = new SuperController();
 
