@@ -128,8 +128,7 @@ function SuperController(){
 	time = lastFrameTime;
 
 	if(debugGlobal.frameCount > 500){
-	    time = new Date().getTime()
-;
+	    time = new Date().getTime();
 	    // console.log("FPS: " + Math.floor(500.0 / Math.pow((time - lastFrameTime), -1) * 1000));
 	    debugGlobal.fps = Math.floor((500.0 / ((time - lastFrameTime) / 1000.0)));
 	    if(debugGlobal.fps < 10){
